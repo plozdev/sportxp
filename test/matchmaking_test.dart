@@ -23,11 +23,15 @@ void main() {
     );
     await expectLater(repo.joinRoom('missing', 'me'), throwsStateError);
   });
-  test('Provisional rank thresholds handle boundaries', () {
-    expect(RankTier.fromElo(999), RankTier.bronze);
-    expect(RankTier.fromElo(1000), RankTier.silver);
-    expect(RankTier.fromElo(1400), RankTier.gold);
-    expect(RankTier.fromElo(1800), RankTier.platinum);
+  test('Vietnam recreational rank thresholds handle boundaries', () {
+    expect(RankTier.fromElo(449), RankTier.newbie);
+    expect(RankTier.fromElo(450), RankTier.lowerCasual);
+    expect(RankTier.fromElo(599), RankTier.lowerCasual);
+    expect(RankTier.fromElo(600), RankTier.midCasual);
+    expect(RankTier.fromElo(749), RankTier.midCasual);
+    expect(RankTier.fromElo(750), RankTier.upperCasual);
+    expect(RankTier.fromElo(999), RankTier.upperCasual);
+    expect(RankTier.fromElo(1000), RankTier.advanced);
     expect(() => RankTier.fromElo(-1), throwsArgumentError);
   });
 }

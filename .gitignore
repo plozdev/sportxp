@@ -43,3 +43,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+/android/build/
+
+# Local Supabase build configuration
+config/supabase.local.json
+.env
+.env.*

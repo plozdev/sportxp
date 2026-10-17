@@ -11,7 +11,6 @@ class MatchRoom {
     if (courtName.trim().isEmpty ||
         capacity < 2 ||
         playerIds.length > capacity ||
-        !playerIds.contains(hostId) ||
         playerIds.toSet().length != playerIds.length ||
         (distanceKm != null && distanceKm! < 0)) {
       throw ArgumentError('Phòng đấu không hợp lệ.');
