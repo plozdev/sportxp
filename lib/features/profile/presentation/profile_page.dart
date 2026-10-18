@@ -20,12 +20,14 @@ class ProfilePage extends StatelessWidget {
     required this.onSignOut,
     required this.onRefresh,
     this.repository,
+    this.accountSwitcher,
   });
 
   final Future<PlayerProfile?> profile;
   final bool isSignedIn;
   final VoidCallback onSignOut, onRefresh;
   final ProfileRepository? repository;
+  final Widget? accountSwitcher;
 
   void _openPassport(BuildContext context, PlayerProfile player) {
     showModalBottomSheet<void>(
@@ -61,7 +63,7 @@ class ProfilePage extends StatelessWidget {
       return AuthPage(client: repository?.client);
     }
 
-    return AsyncPanel<PlayerProfile?>(
+    final content = AsyncPanel<PlayerProfile?>(
       future: profile,
       onRetry: onRefresh,
       builder: (player) {
@@ -208,6 +210,14 @@ class ProfilePage extends StatelessWidget {
         );
       },
     );
+    return accountSwitcher == null
+        ? content
+        : Column(
+            children: [
+              accountSwitcher!,
+              Expanded(child: content),
+            ],
+          );
   }
 }
 
@@ -423,14 +433,17 @@ class _AthleteHeaderCard extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color:
-                            (isCalibrated ? AppColors.primary : AppColors.streak)
+                            (isCalibrated
+                                    ? AppColors.primary
+                                    : AppColors.streak)
                                 .withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: (isCalibrated
-                                  ? AppColors.primary
-                                  : AppColors.streak)
-                              .withValues(alpha: 0.35),
+                          color:
+                              (isCalibrated
+                                      ? AppColors.primary
+                                      : AppColors.streak)
+                                  .withValues(alpha: 0.35),
                         ),
                       ),
                       child: Column(
@@ -507,7 +520,9 @@ class _AthleteHeaderCard extends StatelessWidget {
                           height: 6,
                           margin: EdgeInsets.only(right: index < 4 ? 6 : 0),
                           decoration: BoxDecoration(
-                            color: isDone ? AppColors.streak : AppColors.surface,
+                            color: isDone
+                                ? AppColors.streak
+                                : AppColors.surface,
                             borderRadius: BorderRadius.circular(3),
                             border: Border.all(
                               color: isDone
@@ -688,7 +703,10 @@ class _PerformanceMetricsCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     player.trustStatusText,
-                    style: const TextStyle(fontSize: 11, color: AppColors.muted),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.muted,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),

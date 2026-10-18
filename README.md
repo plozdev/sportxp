@@ -28,13 +28,13 @@ configuration and an Android device/emulator. In **Run > Edit Configurations >
 Additional run args**, use:
 
 ```text
---dart-define-from-file=.env --dart-define=ROOMS_V2_ENABLED=true
+--dart-define-from-file=.env --dart-define=ROOMS_MOCK_ENABLED=true
 ```
 
 The local `.idea/runConfigurations/main_dart.xml` is configured with these
 arguments (IDE files are gitignored). Stop and run again after changing defines;
-hot reload does not update them. Enable rooms v2 only against a database with
-the Phase 2A migration applied, as described below. `--no-wasm-dry-run` belongs
+hot reload does not update them. Rooms mock is enabled by default and requires
+no room migration. `--no-wasm-dry-run` belongs
 to web builds and should not be included in an Android run configuration.
 
 Rebuild when changing `.env`. Do not bundle a service-role key. A public anon key
@@ -44,6 +44,9 @@ Android release Internet permission is configured. Without configuration the app
 shows a dark setup state rather than demo records.
 
 ## Implemented
+
+The current MVP uses the Phase 2–4 sandbox by default. The Supabase data flows
+below describe the retained adapters used when mock is explicitly disabled.
 
 - Password login/sign-up, confirmation-email state, session persistence, logout.
   Login/sign-up is a full screen required before any app screen or profile link.
@@ -82,9 +85,63 @@ links still require domain association files and native signing configuration.
 The isolated SQL test uses `@electric-sql/pglite` installed outside the repository:
 `node supabase/tests/social_phase1_test.cjs <installation-directory>`.
 
-## Managed rooms (Phase 2A)
+## Phase 2–4 sandbox (current MVP)
 
-The new room workflow is gated by `--dart-define=ROOMS_V2_ENABLED=true`. Apply
+Phase 1 auth, onboarding, social and profile still use Supabase. Rooms, courts,
+matches and attendance use one in-memory `MockRoomRepository`, owned by the
+signed-in shell; rebuilding widgets or changing tabs does not reset it. Restart,
+logout/account change or the sandbox Reset button discards the fixture state.
+Only the current user's ID/name/initial rating are read into the sandbox. Mock
+roles/friendships, scores and attendance never update Supabase profiles or social.
+
+`ROOMS_MOCK_ENABLED` defaults to true and overrides `ROOMS_V2_ENABLED`. The Home
+record button routes to sandbox rooms instead of invoking the old record/Elo RPC.
+Home now uses the activity sandbox; it does not query `match_results` while mock
+is enabled. Phase 1 profile/social still use Supabase; leaderboard now projects
+the same five sandbox identities/ratings, with sample streaks and an active-role
+marker. It does not query the real leaderboard when mock is enabled.
+
+Profile → **Đổi tài khoản giả lập** switches the shared room/feed/ranking actor
+without signing out, resetting mock data or changing the real profile below the
+selector. The selector remains available if the real profile fails to load.
+
+Try: Kèo đấu → Buổi của tôi → active demo → Trận đấu / Điểm danh. Record a
+single/doubles match, switch to an opposing player and confirm/dispute it; switch
+back to the author to edit. The host can record attendance, the affected player
+can object and the host can resolve with a note. Finish the seeded active demo
+before starting another room with the same participants. Early start is explicitly
+allowed only in this sandbox. Host self-attendance and Elo/Trust calculations are
+deferred; booking is only a host declaration, not a venue reservation.
+
+Discovery supports combined area/fixed-distance/date/skill/fee/available-slot
+filters before pagination. Private rooms are absent from discovery and visible
+under the mock friends tab when authorized. No GPS or ranking algorithm runs.
+
+`RoomRepository` and `RoomSessionRepository` define the adapter boundary, with
+immutable commands, request IDs and versioned result/attendance changes. Tests
+exercise permissions, retries, waitlist promotion, consent and lifecycle states.
+
+Phase 4 creates separate personal and host-summary drafts from completed session
+logs. Home → Nháp từ log → write caption → choose Friends/Only me → Preview →
+Publish. A completed fixture provides drafts immediately. Publish is manual;
+pending/disputed results are labeled and excluded from win/loss totals. Later
+confirmations update derived totals on refresh while preserving post content.
+Cards show no participant tags, attendance or dispute reasons. Private venue/title
+are redacted for friends outside that session; user-authored captions are explicit.
+
+`ActivityRepository` owns captions/audience/reactions/tombstones, using typed log
+projections from the room store. Request receipts prevent duplicate writes and
+content versions reject stale edits. Post deletion never deletes match logs.
+The Home sandbox connection sheet can simulate unfriend/block, revoking list,
+detail and reaction access. Those connections never modify Phase 1 friendships.
+Changing tabs/returning from detail/manual refresh reloads totals; no Realtime
+subscription is implemented. Photos, comments, tags, Story export and actual
+Elo/Trust updates remain deferred. Tests: `flutter test test/mock_activity_test.dart`.
+
+## Retained Supabase rooms adapter (Phase 2A)
+
+For the retained backend adapter, explicitly set `--dart-define=ROOMS_MOCK_ENABLED=false`
+and `--dart-define=ROOMS_V2_ENABLED=true`. Apply
 `supabase/migrations/20261019000100_rooms_phase2a.sql` after Phase 1, on staging
 first, and deploy the enabled client together with the schema cutover. The flag
 defaults to false so the existing MVP can run before the new backend is ready.

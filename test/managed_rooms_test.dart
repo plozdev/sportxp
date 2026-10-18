@@ -149,11 +149,16 @@ void main() {
       await tester.tap(find.text('Kèo đấu'));
       await tester.pumpAndSettle();
       expect(find.text('Buổi của tôi'), findsOneWidget);
-      expect(paths, contains('list_rooms_v2'));
+      const mock = bool.fromEnvironment(
+        'ROOMS_MOCK_ENABLED',
+        defaultValue: true,
+      );
+      expect(paths.contains('list_rooms_v2'), !mock);
+      if (mock) expect(paths, isNot(contains('match_results')));
       await tester.tap(find.text('TẠO KÈO MỚI'));
       await tester.pumpAndSettle();
       expect(find.text('Tạo buổi chơi'), findsOneWidget);
-      expect(paths, contains('courts'));
+      expect(paths.contains('courts'), !mock);
       expect(paths, isNot(contains('match_rooms')));
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());

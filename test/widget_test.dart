@@ -140,8 +140,13 @@ void main() {
       expect(find.text('Chào mừng trở lại.'), findsNothing);
       await tester.tap(find.text('Xếp hạng'));
       await tester.pumpAndSettle();
-      expect(find.text('Minh'), findsOneWidget);
-      expect(find.text('1550'), findsOneWidget);
+      if (const bool.fromEnvironment('ROOMS_MOCK_ENABLED', defaultValue: true)) {
+        expect(find.text('Bảo · giả lập'), findsOneWidget);
+        expect(find.text('1000'), findsOneWidget);
+      } else {
+        expect(find.text('Minh'), findsOneWidget);
+        expect(find.text('1550'), findsOneWidget);
+      }
       final nav = tester.state<NavigatorState>(find.byType(Navigator).first);
       nav.push(
         MaterialPageRoute<void>(

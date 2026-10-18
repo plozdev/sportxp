@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../data/managed_room_repository.dart';
 import '../domain/managed_room.dart';
+import '../domain/room_repository.dart';
 import 'room_detail_page.dart';
+import '../data/mock_room_repository.dart';
+import 'mock_room_controls.dart';
+import 'widgets/room_card.dart';
+import 'widgets/room_filter_sheet.dart';
 
 class ManagedRoomsPage extends StatefulWidget {
   const ManagedRoomsPage({
@@ -10,8 +16,10 @@ class ManagedRoomsPage extends StatefulWidget {
     required this.repository,
     required this.refreshToken,
   });
-  final ManagedRoomRepository repository;
+
+  final RoomRepository repository;
   final int refreshToken;
+
   @override
   State<ManagedRoomsPage> createState() => _ManagedRoomsPageState();
 }
@@ -23,6 +31,10 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
   bool _loading = false, _more = true;
   String? _error, _noticeError;
   int _generation = 0;
+  bool _noticesExpanded = false;
+
+  final RoomFilterState _filter = RoomFilterState();
+
   @override
   void initState() {
     super.initState();
@@ -45,8 +57,15 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
         _more = true;
       }
     });
+
     try {
-      final rows = await widget.repository.list(scope, offset: _items.length);
+      final rows = await widget.repository.list(
+        scope,
+        offset: _items.length,
+        search: widget.repository is MockRoomRepository && scope == 'discover'
+            ? _filter.toSearch()
+            : null,
+      );
       if (mounted && generation == _generation) {
         setState(() {
           _items.addAll(rows);
@@ -62,6 +81,7 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
         setState(() => _loading = false);
       }
     }
+
     if (reset) {
       try {
         final rows = await widget.repository.notices();
@@ -91,117 +111,543 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
   }
 
   String _noticeText(String kind) => switch (kind) {
-    'TERMS_CHANGED' => 'Điều kiện đã đổi; cần xem và xác nhận lại.',
-    'PROMOTED' => 'Bạn đã được lên chỗ từ danh sách chờ.',
-    'MEMBER_LEFT' => 'Có người hủy đăng ký.',
-    'HOST_CANCELLED' => 'Host đã hủy buổi chơi.',
+    'TERMS_CHANGED' => 'Điều kiện buổi chơi đã đổi; cần xem và xác nhận lại.',
+    'PROMOTED' => 'Bạn đã được lên chỗ chính thức từ danh sách chờ.',
+    'MEMBER_LEFT' => 'Có người chơi vừa hủy đăng ký.',
+    'HOST_CANCELLED' => 'Host đã hủy buổi chơi này.',
     'NOT_RECONFIRMED' =>
       'Chỗ chưa xác nhận lại đã được giải phóng; không phạt.',
     'COMPLETED' => 'Buổi chơi đã kết thúc.',
     'WAITLIST_CLOSED' =>
-      'Buổi chơi đã bắt đầu; danh sách chờ được đóng, không phạt.',
+      'Buổi chơi đã bắt đầu; danh sách chờ đã đóng, không phạt.',
     'WAITLIST_ACCESS_REVOKED' =>
       'Đăng ký chờ đã hủy do thay đổi quyền kết nối; không phạt.',
     _ => kind,
   };
-  @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      Padding(
-        padding: const EdgeInsets.all(12),
-        child: Wrap(
-          spacing: 8,
-          children: [
-            for (final e in const {
-              'discover': 'Tìm kèo',
-              'mine': 'Buổi của tôi',
-              'history': 'Lịch sử',
-            }.entries)
-              ChoiceChip(
-                label: Text(e.value),
-                selected: _scope == e.key,
-                onSelected: _loading
-                    ? null
-                    : (_) {
-                        _scope = e.key;
-                        _load(reset: true);
-                      },
+
+  Widget _buildScopeSelector() {
+    final scopes = {
+      'discover': 'Tìm kèo',
+      'mine': 'Buổi của tôi',
+      'history': 'Lịch sử',
+      if (widget.repository is MockRoomRepository)
+        'connections': 'Kèo riêng bạn bè',
+    };
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          for (final e in scopes.entries) ...[
+            ChoiceChip(
+              label: Text(
+                e.value,
+                style: TextStyle(
+                  fontWeight: _scope == e.key ? FontWeight.w700 : FontWeight.w500,
+                  fontSize: 13,
+                  color: _scope == e.key ? AppColors.background : AppColors.text,
+                ),
               ),
-            IconButton(
-              onPressed: () => _load(reset: true),
-              icon: const Icon(Icons.refresh),
-              tooltip: 'Tải lại buổi chơi',
+              selected: _scope == e.key,
+              selectedColor: AppColors.primary,
+              backgroundColor: AppColors.surface,
+              side: BorderSide(
+                color: _scope == e.key ? AppColors.primary : AppColors.border,
+              ),
+              showCheckmark: false,
+              onSelected: _loading
+                  ? null
+                  : (_) {
+                      setState(() => _scope = e.key);
+                      _load(reset: true);
+                    },
             ),
+            const SizedBox(width: 8),
           ],
+          IconButton.filledTonal(
+            onPressed: _loading ? null : () => _load(reset: true),
+            icon: const Icon(Icons.refresh, size: 18),
+            style: IconButton.styleFrom(
+              backgroundColor: AppColors.surface,
+              foregroundColor: AppColors.muted,
+              side: const BorderSide(color: AppColors.border),
+            ),
+            tooltip: 'Tải lại',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickFilterBar() {
+    if (widget.repository is! MockRoomRepository || _scope != 'discover') {
+      return const SizedBox.shrink();
+    }
+
+    final activeCount = [
+      _filter.area != 'Tất cả',
+      _filter.radius != 100,
+      _filter.date != null,
+      _filter.skill != null,
+      _filter.maxFee != null,
+      _filter.availableOnly,
+    ].where((active) => active).length;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Row(
+        children: [
+          // Filter BottomSheet Opener Button
+          ActionChip(
+            avatar: Icon(
+              Icons.tune,
+              size: 15,
+              color: activeCount > 0 ? AppColors.primary : AppColors.muted,
+            ),
+            label: Text(
+              activeCount > 0 ? 'Bộ lọc ($activeCount)' : 'Bộ lọc',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: activeCount > 0 ? FontWeight.w700 : FontWeight.w500,
+                color: activeCount > 0 ? AppColors.primary : AppColors.text,
+              ),
+            ),
+            backgroundColor: AppColors.surface,
+            side: BorderSide(
+              color: activeCount > 0 ? AppColors.primary : AppColors.border,
+            ),
+            onPressed: () => RoomFilterSheet.show(
+              context: context,
+              initial: _filter,
+              onApply: (updated) {
+                setState(() {
+                  _filter.area = updated.area;
+                  _filter.radius = updated.radius;
+                  _filter.date = updated.date;
+                  _filter.skill = updated.skill;
+                  _filter.maxFee = updated.maxFee;
+                  _filter.availableOnly = updated.availableOnly;
+                });
+                _load(reset: true);
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+
+          // Available only quick toggle
+          FilterChip(
+            label: const Text('Còn chỗ', style: TextStyle(fontSize: 12)),
+            selected: _filter.availableOnly,
+            selectedColor: AppColors.primary.withValues(alpha: 0.15),
+            checkmarkColor: AppColors.primary,
+            backgroundColor: AppColors.surface,
+            side: BorderSide(
+              color: _filter.availableOnly ? AppColors.primary : AppColors.border,
+            ),
+            onSelected: (val) {
+              setState(() => _filter.availableOnly = val);
+              _load(reset: true);
+            },
+          ),
+          const SizedBox(width: 8),
+
+          // Date quick filter
+          ActionChip(
+            avatar: Icon(
+              Icons.calendar_today_outlined,
+              size: 14,
+              color: _filter.date != null ? AppColors.primary : AppColors.muted,
+            ),
+            label: Text(
+              _filter.date == null
+                  ? 'Ngày chơi'
+                  : '${_filter.date!.day}/${_filter.date!.month}',
+              style: TextStyle(
+                fontSize: 12,
+                color: _filter.date != null ? AppColors.primary : AppColors.text,
+              ),
+            ),
+            backgroundColor: AppColors.surface,
+            side: BorderSide(
+              color: _filter.date != null ? AppColors.primary : AppColors.border,
+            ),
+            onPressed: () async {
+              final now = DateTime.now();
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: _filter.date ?? now,
+                firstDate: DateTime(now.year, now.month, now.day),
+                lastDate: now.add(const Duration(days: 365)),
+              );
+              if (picked != null) {
+                setState(() => _filter.date = picked);
+                _load(reset: true);
+              }
+            },
+          ),
+          const SizedBox(width: 8),
+
+          // Area quick chip if selected
+          if (_filter.area != 'Tất cả') ...[
+            Chip(
+              label: Text(_filter.area, style: const TextStyle(fontSize: 12)),
+              deleteIcon: const Icon(Icons.close, size: 14),
+              onDeleted: () {
+                setState(() => _filter.area = 'Tất cả');
+                _load(reset: true);
+              },
+              backgroundColor: AppColors.surface,
+              side: const BorderSide(color: AppColors.primary),
+            ),
+            const SizedBox(width: 8),
+          ],
+
+          // Reset all if any filter is active
+          if (_filter.hasActiveFilter)
+            TextButton.icon(
+              onPressed: () {
+                setState(() => _filter.reset());
+                _load(reset: true);
+              },
+              icon: const Icon(Icons.clear_all, size: 16),
+              label: const Text('Xóa lọc', style: TextStyle(fontSize: 12)),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.loss,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoticesBanner() {
+    if (_notices.isEmpty) return const SizedBox.shrink();
+
+    final unreadCount = _notices.where((n) => n['read'] != true).length;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: unreadCount > 0
+              ? AppColors.streak.withValues(alpha: 0.5)
+              : AppColors.border,
         ),
       ),
-      Expanded(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-          children: [
-            if (_noticeError != null) Text(_noticeError!),
-            if (_notices.isNotEmpty)
-              ExpansionTile(
-                title: Text(
-                  'Thông báo buổi chơi (${_notices.where((n) => n['read'] != true).length} chưa đọc)',
-                ),
+      child: Column(
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () => setState(() => _noticesExpanded = !_noticesExpanded),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
                 children: [
-                  for (final notice in _notices)
-                    ListTile(
-                      title: Text(_noticeText(notice['kind'] as String)),
-                      subtitle: Text(
-                        'Bản ${notice['revision']} · ${notice['created_at']}',
+                  Icon(
+                    Icons.notifications_active_outlined,
+                    size: 18,
+                    color: unreadCount > 0 ? AppColors.streak : AppColors.muted,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Thông báo buổi chơi${unreadCount > 0 ? ' ($unreadCount chưa đọc)' : ''}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: unreadCount > 0 ? AppColors.text : AppColors.muted,
                       ),
-                      onTap: () => _open(notice['room_id'] as String),
                     ),
-                  TextButton(
-                    onPressed: () async {
-                      try {
-                        await widget.repository.readNotices(
-                          (_notices.first['id'] as num).toInt(),
-                        );
-                        if (mounted) _load(reset: true);
-                      } catch (_) {
-                        if (mounted) {
-                          setState(
-                            () => _noticeError = 'Chưa thể đánh dấu đã đọc.',
-                          );
-                        }
-                      }
-                    },
-                    child: const Text('Đánh dấu đã đọc các thông báo hiện có'),
+                  ),
+                  Icon(
+                    _noticesExpanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    size: 18,
+                    color: AppColors.muted,
                   ),
                 ],
               ),
-            if (_error != null) Text(_error!),
-            if (_items.isEmpty && !_loading && _error == null)
-              const Padding(
-                padding: EdgeInsets.all(20),
-                child: Text('Chưa có buổi chơi trong mục này.'),
-              ),
-            for (final room in _items)
-              Card(
-                child: ListTile(
-                  title: Text('${room.title} · ${room.statusLabel}'),
-                  subtitle: Text(
-                    '${room.courtName} · ${room.visibility}\n${room.startsAt.toLocal()} → ${room.endsAt.toLocal()}\n'
-                    '${room.reserved}/${room.capacity} chỗ · ${room.minElo}–${room.maxElo} Elo · ${room.fee} VND/người'
-                    '${room.myStatus == null ? '' : '\nĐăng ký: ${room.myStatus}'}',
+            ),
+          ),
+          if (_noticesExpanded) ...[
+            const Divider(height: 1, color: AppColors.border),
+            for (final notice in _notices)
+              ListTile(
+                dense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 2,
+                ),
+                leading: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: notice['read'] == true
+                        ? Colors.transparent
+                        : AppColors.streak,
                   ),
-                  isThreeLine: true,
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _open(room.id),
+                ),
+                title: Text(
+                  _noticeText(notice['kind'] as String),
+                  style: const TextStyle(fontSize: 13, color: AppColors.text),
+                ),
+                subtitle: Text(
+                  'Bản ${notice['revision']} • ${notice['created_at']}',
+                  style: AppTokens.label,
+                ),
+                trailing: const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 12,
+                  color: AppColors.muted,
+                ),
+                onTap: () => _open(notice['room_id'] as String),
+              ),
+            if (unreadCount > 0)
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: TextButton.icon(
+                  onPressed: () async {
+                    try {
+                      await widget.repository.readNotices(
+                        (_notices.first['id'] as num).toInt(),
+                      );
+                      if (mounted) _load(reset: true);
+                    } catch (_) {
+                      if (mounted) {
+                        setState(
+                          () => _noticeError = 'Chưa thể đánh dấu đã đọc.',
+                        );
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.done_all, size: 16),
+                  label: const Text(
+                    'Đánh dấu đã đọc các thông báo',
+                    style: TextStyle(fontSize: 12),
+                  ),
                 ),
               ),
-            if (_loading) const LinearProgressIndicator(),
-            if (!_loading && _more && _error == null)
-              TextButton(
-                onPressed: () => _load(),
-                child: const Text('Tải thêm'),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    final icon = switch (_scope) {
+      'mine' => Icons.sports_tennis_outlined,
+      'history' => Icons.history_toggle_off,
+      'connections' => Icons.group_outlined,
+      _ => Icons.search_off_outlined,
+    };
+
+    final message = switch (_scope) {
+      'mine' => 'Bạn chưa tham gia hoặc làm host buổi chơi nào.',
+      'history' => 'Chưa có lịch sử buổi chơi nào hoàn tất.',
+      'connections' => 'Chưa có kèo riêng nào từ bạn bè hai chiều.',
+      _ => _filter.hasActiveFilter
+          ? 'Không tìm thấy kèo phù hợp với bộ lọc.'
+          : 'Chưa có buổi chơi nào mở tuyển trong khu vực.',
+    };
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Icon(icon, size: 36, color: AppColors.muted),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppColors.text,
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (_filter.hasActiveFilter && _scope == 'discover')
+              OutlinedButton.icon(
+                onPressed: () {
+                  setState(() => _filter.reset());
+                  _load(reset: true);
+                },
+                icon: const Icon(Icons.filter_alt_off, size: 16),
+                label: const Text('Xóa bộ lọc'),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.border),
+                ),
               ),
           ],
         ),
       ),
-    ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: AppColors.background,
+    body: Column(
+      children: [
+        // Scope Navigation Bar
+        _buildScopeSelector(),
+
+        // Quick Filter Bar
+        _buildQuickFilterBar(),
+
+        const SizedBox(height: 4),
+
+        // Main List Content
+        Expanded(
+          child: RefreshIndicator(
+            color: AppColors.primary,
+            backgroundColor: AppColors.surface,
+            onRefresh: () => _load(reset: true),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: AppTokens.contentWidth,
+                ),
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+                  children: [
+                    // Mock Sandbox Controller
+                    MockRoomControls(
+                      repository: widget.repository,
+                      allowReset: true,
+                      onChanged: () => _load(reset: true),
+                    ),
+
+                    // Notices Banner
+                    _buildNoticesBanner(),
+
+                    if (_noticeError != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          _noticeError!,
+                          style: const TextStyle(
+                            color: AppColors.loss,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+
+                    if (_error != null)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: AppColors.loss.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppColors.loss.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.error_outline,
+                              color: AppColors.loss,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _error!,
+                                style: const TextStyle(
+                                  color: AppColors.loss,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => _load(reset: true),
+                              child: const Text('Thử lại'),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // Room Cards
+                    for (final room in _items) ...[
+                      RoomCard(
+                        room: room,
+                        onTap: () => _open(room.id),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+
+                    // Loading State
+                    if (_loading)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+
+                    // Empty State
+                    if (_items.isEmpty && !_loading && _error == null)
+                      _buildEmptyState(),
+
+                    // Pagination Load More Button
+                    if (!_loading && _more && _error == null && _items.isNotEmpty)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: OutlinedButton.icon(
+                            onPressed: () => _load(),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size(180, AppTokens.touchTarget),
+                              side: const BorderSide(color: AppColors.border),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            icon: const Icon(
+                              Icons.keyboard_arrow_down,
+                              size: 18,
+                              color: AppColors.muted,
+                            ),
+                            label: const Text(
+                              'TẢI THÊM BUỔI CHƠI',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.text,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
   );
 }

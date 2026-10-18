@@ -5,10 +5,11 @@ import 'package:flutter/material.dart';
 import '../../matchmaking/domain/court.dart';
 import '../data/managed_room_repository.dart';
 import '../domain/managed_room.dart';
+import '../domain/room_repository.dart';
 
 class RoomEditorPage extends StatefulWidget {
   const RoomEditorPage({super.key, required this.repository, this.room});
-  final ManagedRoomRepository repository;
+  final RoomRepository repository;
   final ManagedRoom? room;
   @override
   State<RoomEditorPage> createState() => _RoomEditorPageState();

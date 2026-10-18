@@ -16,11 +16,21 @@ class RoomCommand {
     this.roomId,
     Map<String, dynamic> payload = const {},
     String? requestId,
-  }) : payload = Map.unmodifiable(payload),
+  }) : payload = Map<String, dynamic>.unmodifiable(
+         payload.map((key, value) => MapEntry(key, _freeze(value))),
+       ),
        requestId = requestId ?? newRoomRequestId();
   final String action, requestId;
   final String? roomId;
   final Map<String, dynamic> payload;
+
+  static dynamic _freeze(dynamic value) => switch (value) {
+    Map v => Map.unmodifiable(
+      v.map((key, item) => MapEntry(key, _freeze(item))),
+    ),
+    List v => List.unmodifiable(v.map(_freeze)),
+    _ => value,
+  };
 }
 
 class ManagedRoom {
@@ -48,6 +58,8 @@ class ManagedRoom {
       cancellationReason = json['cancellation_reason'] as String?,
       notes = json['notes'] as String? ?? '',
       courtLabel = json['court_label'] as String? ?? '',
+      bookingStatus = json['booking_status'] as String? ?? 'UNCONFIRMED',
+      viewerId = json['viewer_id'] as String?,
       members = List<Map<String, dynamic>>.unmodifiable(
         (json['members'] as List? ?? []).map(
           (row) => Map<String, dynamic>.unmodifiable(row as Map),
@@ -63,6 +75,8 @@ class ManagedRoom {
       hostName,
       notes,
       courtLabel;
+  final String bookingStatus;
+  final String? viewerId;
   final String? myStatus;
   final String? cancellationReason;
   final DateTime startsAt, endsAt, cancelBy;

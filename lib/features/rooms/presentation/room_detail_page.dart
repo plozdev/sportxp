@@ -2,10 +2,15 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/async_panel.dart';
 import '../../../shared/widgets/bento_card.dart';
 import '../data/managed_room_repository.dart';
 import '../domain/managed_room.dart';
+import '../domain/room_repository.dart';
+import 'room_session_page.dart';
+import '../data/mock_room_repository.dart';
+import 'mock_room_controls.dart';
 import 'room_editor_page.dart';
 
 class RoomDetailPage extends StatefulWidget {
@@ -14,7 +19,7 @@ class RoomDetailPage extends StatefulWidget {
     required this.repository,
     required this.roomId,
   });
-  final ManagedRoomRepository repository;
+  final RoomRepository repository;
   final String roomId;
   @override
   State<RoomDetailPage> createState() => _RoomDetailPageState();
@@ -165,47 +170,147 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             '${room.startsAt.day}/${room.startsAt.month}/${room.startsAt.year} ${TimeOfDay.fromDateTime(room.startsAt).format(context)} → ${TimeOfDay.fromDateTime(room.endsAt).format(context)}';
         return PageContent(
           children: [
+            MockRoomControls(
+              repository: widget.repository,
+              onChanged: () {
+                _pending = null;
+                _error = null;
+                setState(_load);
+              },
+            ),
             BentoCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+                        ),
+                        child: Text(
+                          room.statusLabel,
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${room.visibility} · Bản ${room.revision}',
+                        style: AppTokens.label,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   Text(
                     room.title,
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                   ),
-                  Text(
-                    '${room.statusLabel} · ${room.visibility} · Bản ${room.revision}',
-                  ),
+                  const SizedBox(height: 8),
                   Text('${room.courtName} · ${room.courtLabel}'),
-                  Text(room.address),
-                  Text(time),
+                  Text(room.address, style: AppTokens.label),
+                  const SizedBox(height: 6),
+                  Text(
+                    room.bookingStatus == 'HOST_CONFIRMED'
+                        ? 'Host đã khai báo đặt sân · chưa được cơ sở sân xác thực'
+                        : 'Chưa xác nhận đặt sân',
+                    style: TextStyle(
+                      color: room.bookingStatus == 'HOST_CONFIRMED'
+                          ? AppColors.primary
+                          : AppColors.muted,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(time, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 12),
                   Text(
                     '${room.reserved}/${room.capacity} chỗ chơi · ${room.minElo}–${room.maxElo} Elo',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
-                  Text('${room.fee} VND/người · phí dự kiến'),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${room.fee} VND/người · phí dự kiến',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
                   Text(
                     'Host: ${room.hostName}${room.hostPlays ? ' (có chơi)' : ' (chỉ tổ chức)'}',
                   ),
-                  Text('Hạn hủy: ${room.cancelBy.toLocal()}'),
-                  Text(room.notes),
-                  if (room.cancellationReason != null)
-                    Text('Lý do hủy: ${room.cancellationReason}'),
-                  if (room.myStatus != null)
-                    Text('Đăng ký của bạn: ${room.myStatus}'),
-                  if (room.myStatus == 'RECONFIRM')
+                  const SizedBox(height: 4),
+                  Text('Hạn hủy: ${room.cancelBy.toLocal()}', style: AppTokens.label),
+                  if (room.notes.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text(room.notes, style: const TextStyle(fontSize: 13)),
+                  ],
+                  if (room.cancellationReason != null) ...[
+                    const SizedBox(height: 8),
+                    Text('Lý do hủy: ${room.cancellationReason}', style: const TextStyle(color: AppColors.loss)),
+                  ],
+                  if (room.myStatus != null) ...[
+                    const SizedBox(height: 8),
+                    Text('Đăng ký của bạn: ${room.myStatus}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                  ],
+                  if (room.myStatus == 'RECONFIRM') ...[
+                    const SizedBox(height: 6),
                     const Text(
                       'Điều kiện đã thay đổi. Chỗ vẫn được giữ nhưng lịch mới chỉ được nhận khi bạn xác nhận lại.',
+                      style: TextStyle(color: AppColors.streak),
                     ),
-                  if (room.myStatus == 'WAITLIST')
+                  ],
+                  if (room.myStatus == 'WAITLIST') ...[
+                    const SizedBox(height: 6),
                     const Text(
                       'Bạn đang chờ; chưa giữ chỗ hoặc giữ lịch. Có thể tự lên chỗ theo thứ tự nếu vẫn đủ điều kiện.',
+                      style: TextStyle(color: AppColors.muted),
                     ),
+                  ],
                 ],
               ),
             ),
             if (_error != null)
               Text(_error!, style: const TextStyle(color: Colors.redAccent)),
             if (_busy) const LinearProgressIndicator(),
+            if (widget.repository is MockRoomRepository &&
+                room.status == 'COMPLETED')
+              const Text(
+                'Trang chủ có nháp từ log cho từng người chơi và nháp tổng kết riêng cho host. Bạn chủ động viết caption và chia sẻ.',
+              ),
+            if (widget.repository is RoomSessionRepository && room.canEdit)
+              OutlinedButton(
+                onPressed: _busy
+                    ? null
+                    : () => _execute('booking', payload: {'confirmed': true}),
+                child: const Text('Host xác nhận đã liên hệ đặt sân'),
+              ),
+            if (widget.repository is RoomSessionRepository &&
+                (room.isHost || room.myStatus == 'REGISTERED') &&
+                ['IN_PROGRESS', 'COMPLETED'].contains(room.status))
+              FilledButton(
+                onPressed: () =>
+                    Navigator.push<void>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => RoomSessionPage(
+                          repository:
+                              widget.repository as RoomSessionRepository,
+                          roomId: room.id,
+                        ),
+                      ),
+                    ).then((_) {
+                      if (mounted) setState(_load);
+                    }),
+                child: const Text('Trận đấu / Điểm danh'),
+              ),
             if (room.canRegister &&
                 !room.isHost &&
                 ![
@@ -255,13 +360,19 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
               ),
             if (room.isHost &&
                 ['OPEN', 'FULL'].contains(room.status) &&
-                !room.startsAt.isAfter(DateTime.now())) ...[
+                (!room.startsAt.isAfter(DateTime.now()) ||
+                    widget.repository is MockRoomRepository)) ...[
               if (room.members.any((m) => m['status'] == 'RECONFIRM'))
                 action(
                   'Giải phóng chỗ chưa xác nhận lại (không phạt)',
                   'release_unconfirmed',
                 ),
-              action('Bắt đầu buổi chơi', 'start'),
+              action(
+                widget.repository is MockRoomRepository
+                    ? 'Bắt đầu buổi chơi (mock cho phép sớm)'
+                    : 'Bắt đầu buổi chơi',
+                'start',
+              ),
             ],
             if (room.isHost && room.status == 'IN_PROGRESS')
               action('Kết thúc buổi (chưa chốt Elo/điểm danh)', 'finish'),

@@ -6,6 +6,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../features/feed/domain/match_summary.dart';
 import '../features/feed/presentation/feed_page.dart';
 import '../features/feed/presentation/record_match_sheet.dart';
+import '../features/feed/data/mock_activity_repository.dart';
+import '../features/feed/presentation/activity_feed_page.dart';
 import '../features/matchmaking/domain/live_match_repository.dart';
 import '../features/matchmaking/domain/match_room.dart';
 import '../features/matchmaking/presentation/create_match_sheet.dart';
@@ -14,9 +16,13 @@ import '../features/profile/data/profile_repository.dart';
 import '../features/profile/domain/player_profile.dart';
 import '../features/profile/presentation/profile_page.dart';
 import '../features/rankings/presentation/leaderboard_page.dart';
+import '../features/rankings/data/mock_leaderboard_repository.dart';
+import '../features/rankings/data/supabase_leaderboard_repository.dart';
 import '../core/theme/app_theme.dart';
 import '../shared/widgets/bento_card.dart';
 import '../features/rooms/data/managed_room_repository.dart';
+import '../features/rooms/data/mock_room_repository.dart';
+import '../features/rooms/domain/room_repository.dart';
 import '../features/rooms/presentation/managed_rooms_page.dart';
 import '../features/rooms/presentation/room_editor_page.dart';
 
@@ -40,11 +46,34 @@ class _SportXpShellState extends State<SportXpShell> {
   int _index = 0;
   int _roomRefresh = 0;
   static const _roomsV2 = bool.fromEnvironment('ROOMS_V2_ENABLED');
+  static const _mockRooms = bool.fromEnvironment(
+    'ROOMS_MOCK_ENABLED',
+    defaultValue: true,
+  );
+  MockRoomRepository? _sandbox;
+  MockActivityRepository? _activities;
+  bool get _managed => _mockRooms || _roomsV2;
+  RoomRepository get _roomRepository =>
+      _mockRooms ? _sandbox! : ManagedRoomRepository(widget.client!);
+
+  void _bindSandbox() {
+    final id = _userId;
+    if (id == null) {
+      _sandbox = null;
+      _activities = null;
+      return;
+    }
+    if (_sandbox?.userId != id) {
+      _sandbox = MockRoomRepository(userId: id);
+      _activities = MockActivityRepository(_sandbox!);
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     _userId = widget.client?.auth.currentUser?.id;
+    _bindSandbox();
     _reload();
     _auth = widget.client?.auth.onAuthStateChange.listen(
       (state) {
@@ -52,6 +81,7 @@ class _SportXpShellState extends State<SportXpShell> {
         if (!mounted || id == _userId) return;
         setState(() {
           _userId = id;
+          _bindSandbox();
           _reload();
         });
       },
@@ -69,13 +99,27 @@ class _SportXpShellState extends State<SportXpShell> {
     final client = widget.client;
     if (client != null) {
       final profiles = ProfileRepository(client);
-      _leaders = _observe(profiles.leaderboard());
+      if (!_mockRooms) _leaders = _observe(profiles.leaderboard());
       _profile = _observe(profiles.currentProfile());
+      final sandbox = _sandbox;
+      unawaited(
+        _profile.then<void>((p) {
+          if (p != null && identical(sandbox, _sandbox)) {
+            final changed =
+                sandbox != null &&
+                (sandbox.people[sandbox.userId] != p.displayName ||
+                    (p.eloRating != null &&
+                        sandbox.ratings[sandbox.userId] != p.eloRating));
+            sandbox?.updateProfile(p.displayName, p.eloRating);
+            if (_mockRooms && mounted && changed) _refreshSandbox();
+          }
+        }, onError: (Object _, StackTrace _) {}),
+      );
     }
     final matches = widget.matches;
     if (matches != null) {
-      _feed = _observe(matches.feed());
-      if (!_roomsV2) _rooms = _observe(matches.openRooms());
+      if (!_mockRooms) _feed = _observe(matches.feed());
+      if (!_managed) _rooms = _observe(matches.openRooms());
     }
   }
 
@@ -87,6 +131,43 @@ class _SportXpShellState extends State<SportXpShell> {
   }
 
   void _refresh() => setState(_reload);
+  void _refreshSandbox() => setState(() => _roomRefresh++);
+
+  Future<void> _switchMockAccount() async {
+    final sandbox = _sandbox;
+    if (sandbox == null) return;
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      useSafeArea: true,
+      builder: (context) => ListView(
+        shrinkWrap: true,
+        children: [
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Text(
+              'Đổi tài khoản giả lập\nChỉ đổi vai trong phòng, feed và bảng xếp hạng. Tài khoản đăng nhập thật không đổi.',
+            ),
+          ),
+          for (final player in MockLeaderboardRepository(sandbox).players())
+            ListTile(
+              title: Text(player.displayName),
+              subtitle: Text(
+                '${player.tierName} · ${player.eloRating} Elo${player.id == sandbox.userId ? ' · Tài khoản của tôi' : ''}',
+              ),
+              trailing: player.id == sandbox.actorId
+                  ? const Icon(Icons.check, color: AppColors.primary)
+                  : null,
+              onTap: () => Navigator.pop(context, player.id),
+            ),
+        ],
+      ),
+    );
+    if (mounted && selected != null && identical(sandbox, _sandbox)) {
+      sandbox.selectActor(selected);
+      _refreshSandbox();
+    }
+  }
+
   void _message(String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
@@ -99,12 +180,11 @@ class _SportXpShellState extends State<SportXpShell> {
 
   Future<void> _create() async {
     if (!await _ensureAuth() || !mounted) return;
-    if (_roomsV2 && widget.client != null) {
+    if (_managed && widget.client != null) {
       final success = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
-          builder: (_) =>
-              RoomEditorPage(repository: ManagedRoomRepository(widget.client!)),
+          builder: (_) => RoomEditorPage(repository: _roomRepository),
         ),
       );
       if (mounted && success == true) {
@@ -141,6 +221,13 @@ class _SportXpShellState extends State<SportXpShell> {
 
   Future<void> _record() async {
     if (!await _ensureAuth() || !mounted) return;
+    if (_mockRooms) {
+      setState(() => _index = 1);
+      _message(
+        'Mô phỏng: mở Buổi của tôi → buổi đang chơi → Trận đấu / Điểm danh.',
+      );
+      return;
+    }
     final matches = widget.matches;
     if (matches == null) {
       _message(_schemaMessage);
@@ -224,16 +311,23 @@ class _SportXpShellState extends State<SportXpShell> {
       child: IndexedStack(
         index: _index,
         children: [
-          _feed == null
+          _mockRooms && _sandbox != null && _activities != null
+              ? ActivityFeedPage(
+                  repository: _activities!,
+                  rooms: _sandbox!,
+                  refreshToken: _roomRefresh,
+                  onFindRooms: () => setState(() => _index = 1),
+                )
+              : _feed == null
               ? _pending(feed: true)
               : FeedPage(
                   matches: _feed!,
                   onRecord: _record,
                   onRefresh: _refresh,
                 ),
-          _roomsV2 && widget.client != null
+          _managed && widget.client != null && (!_mockRooms || _sandbox != null)
               ? ManagedRoomsPage(
-                  repository: ManagedRoomRepository(widget.client!),
+                  repository: _roomRepository,
                   refreshToken: _roomRefresh,
                 )
               : _rooms == null
@@ -245,10 +339,41 @@ class _SportXpShellState extends State<SportXpShell> {
                   onJoin: _join,
                   onRefresh: _refresh,
                 ),
-          _leaders == null
+          _mockRooms && _sandbox != null
+              ? LeaderboardPage(
+                  repository: MockLeaderboardRepository(_sandbox!),
+                  players: Future.value(
+                    MockLeaderboardRepository(_sandbox!).players(),
+                  ),
+                  onRefresh: _refreshSandbox,
+                  isMock: true,
+                  selectedPlayerId: _sandbox!.actorId,
+                )
+              : _leaders == null
               ? _pending()
-              : LeaderboardPage(players: _leaders!, onRefresh: _refresh),
+              : LeaderboardPage(
+                  repository: widget.client != null
+                      ? SupabaseLeaderboardRepository(widget.client!)
+                      : null,
+                  players: _leaders,
+                  onRefresh: _refresh,
+                  selectedPlayerId: _userId,
+                ),
           ProfilePage(
+            accountSwitcher: _mockRooms && _sandbox != null
+                ? ListTile(
+                    leading: const Icon(
+                      Icons.switch_account_outlined,
+                      color: AppColors.primary,
+                    ),
+                    title: const Text('Đổi tài khoản giả lập'),
+                    subtitle: Text(
+                      'Đang thử: ${_sandbox!.people[_sandbox!.actorId]}\nHồ sơ bên dưới là tài khoản đăng nhập thật.',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _switchMockAccount,
+                  )
+                : null,
             profile: _profile,
             isSignedIn: _userId != null,
             onSignOut: _signOut,
