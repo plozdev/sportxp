@@ -32,7 +32,8 @@ shows a dark setup state rather than demo records.
 ## Implemented
 
 - Password login/sign-up, confirmation-email state, session persistence, logout.
-  Mutating actions prompt login and resume the requested action after success.
+  Mutating actions prompt login; preserving deep-link/action intent across both
+  login and onboarding is an explicit social-phase acceptance requirement.
 - Home: newest 100 match_results ordered by created_at descending; record form
   calls record_match_and_update_elo with the exact supplied p_* signature.
 - Rooms: OPEN, future rooms joined with courts(name, distance_km); create via
@@ -50,10 +51,11 @@ shows a dark setup state rather than demo records.
 
 ## Backend verification and remaining deployment prerequisite
 
-The supplied .env reaches the live backend. Read-only probes returned HTTP 401
-for the four table endpoints. The courts error is PostgreSQL 42501:
-`permission denied for table courts` for anon. The token has anon role, has not
-expired and matches the project. No live data or permissions were modified.
+During the initial integration, read-only probes returned permission errors for
+the public role. A later read-only audit on 18 Oct 2026 reached all four main
+table endpoints with HTTP 200 for zero-row queries. That confirms column/API
+access for those queries, not a full audit of RLS, table contents or authenticated
+writes. No live data or permissions were modified during that audit.
 
 `supabase/public_read_grants.sql` provides narrow column SELECT grants for public
 browsing. Apply it in the project's SQL Editor. It preserves RLS; existing SELECT
