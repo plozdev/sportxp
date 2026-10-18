@@ -251,6 +251,7 @@ class _SportXpShellState extends State<SportXpShell> {
             onSignIn: _ensureAuth,
             onSignOut: _signOut,
             onRefresh: _refresh,
+            repository: widget.client != null ? ProfileRepository(widget.client!) : null,
           ),
         ],
       ),

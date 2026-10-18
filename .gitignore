@@ -49,3 +49,7 @@ app.*.map.json
 config/supabase.local.json
 .env
 .env.*
+
+docs/
+.vscode/
+.agents/
