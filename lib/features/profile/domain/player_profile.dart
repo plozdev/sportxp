@@ -1,19 +1,26 @@
+import '../../rankings/domain/rank_tier.dart';
+
 class PlayerProfile {
   const PlayerProfile({
     required this.id,
     required this.displayName,
     this.avatarUrl,
     required this.eloRating,
-    required this.tierName,
+    required String tierName,
     required this.trustScore,
     required this.winStreak,
     this.homeCourtId,
     this.homeCourtName,
     this.createdAt,
     this.onboardingStep = 0,
-  });
+  }) : backendTierName = tierName;
 
-  final String id, displayName, tierName;
+  final String id, displayName;
+
+  /// Kept for diagnostics while the SQL label migration is being applied.
+  final String backendTierName;
+  String get tierName =>
+      eloRating == null ? 'Chưa xếp hạng' : RankTier.fromElo(eloRating!).label;
   final String? avatarUrl;
   final int? eloRating;
   final int trustScore, winStreak;
@@ -59,29 +66,28 @@ class PlayerProfile {
   }
 
   /// Thông tin mốc Elo tiếp theo
-  ({String nextTier, int targetElo, int pointsNeeded, double progress}) get nextTierProgress {
+  ({String nextTier, int targetElo, int pointsNeeded, double progress})
+  get nextTierProgress {
     final elo = eloRating ?? 300;
-    if (elo < 450) {
-      const min = 300, max = 450;
-      final progress = ((elo - min) / (max - min)).clamp(0.0, 1.0);
-      return (nextTier: 'Phong trào cơ bản', targetElo: max, pointsNeeded: max - elo, progress: progress);
+    final current = RankTier.fromElo(elo);
+    final next = current.next;
+    if (next == null) {
+      return (
+        nextTier: 'Đỉnh cao bảng đấu',
+        targetElo: elo,
+        pointsNeeded: 0,
+        progress: 1.0,
+      );
     }
-    if (elo < 600) {
-      const min = 450, max = 600;
-      final progress = ((elo - min) / (max - min)).clamp(0.0, 1.0);
-      return (nextTier: 'Phong trào Trung bình', targetElo: max, pointsNeeded: max - elo, progress: progress);
-    }
-    if (elo < 750) {
-      const min = 600, max = 750;
-      final progress = ((elo - min) / (max - min)).clamp(0.0, 1.0);
-      return (nextTier: 'Phong trào Khá', targetElo: max, pointsNeeded: max - elo, progress: progress);
-    }
-    if (elo < 1000) {
-      const min = 750, max = 1000;
-      final progress = ((elo - min) / (max - min)).clamp(0.0, 1.0);
-      return (nextTier: 'Bán chuyên / Thi đấu', targetElo: max, pointsNeeded: max - elo, progress: progress);
-    }
-    return (nextTier: 'Đỉnh cao bảng đấu', targetElo: elo, pointsNeeded: 0, progress: 1.0);
+    final progress =
+        ((elo - current.minimumElo) / (next.minimumElo - current.minimumElo))
+            .clamp(0.0, 1.0);
+    return (
+      nextTier: next.label,
+      targetElo: next.minimumElo,
+      pointsNeeded: next.minimumElo - elo,
+      progress: progress,
+    );
   }
 
   String get trustStatusText {

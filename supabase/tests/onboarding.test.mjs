@@ -20,8 +20,18 @@ await db.exec(`
     win_streak integer NOT NULL DEFAULT 0, onboarding_step integer NOT NULL DEFAULT 0);
 `);
 await db.exec(await readFile(new URL('../migrations/20261018_onboarding.sql', import.meta.url), 'utf8'));
-// A migration may be reapplied without changing existing answers or ratings.
+// Reapply the base migration before the additive v2 taxonomy migration.
 await db.exec(await readFile(new URL('../migrations/20261018_onboarding.sql', import.meta.url), 'utf8'));
+await db.exec(await readFile(new URL('../migrations/20261018_skill_tiers_v2.sql', import.meta.url), 'utf8'));
+const tiers = [[0,'Nhập môn'],[400,'Yếu-'],[450,'Yếu'],[500,'Yếu+'],
+  [550,'TBY-'],[600,'TBY'],[650,'TBY+'],[700,'TB-'],[750,'TB'],[800,'TB+'],
+  [900,'TBK-'],[950,'TBK'],[1000,'TBK+'],[1100,'Khá-'],[1200,'Khá'],[1300,'Khá+'],
+  [1400,'Tốt-'],[1500,'Tốt'],[1600,'Tốt+'],[1700,'Cao thủ phong trào']];
+const tierFor = elo => tiers.findLast(([min]) => elo >= min)[1];
+for (let elo = 0; elo <= 2000; elo++) {
+  const actual = (await db.query('select public.sportxp_tier_name($1) as tier',[elo])).rows[0].tier;
+  assert.equal(actual,tierFor(elo));
+}
 const state = async () => (await db.query('select public.get_onboarding_state() as state')).rows[0].state;
 const save = async (q,a) => (await db.query('select public.save_onboarding_answer($1,$2) as state',[q,a])).rows[0].state;
 await db.exec(`SET ROLE anon`);
@@ -40,13 +50,13 @@ await assert.rejects(() => save(2,3)); checks++;
 await save(2,2); await save(3,3);
 const done = await save(4,3);
 assert.equal(done.onboarding_step,5); assert.equal(done.elo_rating,850); checks++;
-assert.equal(done.tier_name,'Phong trào Khá'); checks++;
+assert.equal(done.tier_name,'TB+'); checks++;
 // Replaying the final save cannot reset Elo gained in real matches.
 await db.exec('RESET ROLE');
 await db.exec(`UPDATE public.profiles SET elo_rating = 1050 WHERE id = '${id}'`);
 await db.exec('SET ROLE authenticated');
 assert.equal((await save(4,3)).elo_rating,1050); checks++;
-assert.equal((await state()).tier_name,'Bán chuyên / Thi đấu'); checks++;
+assert.equal((await state()).tier_name,'TBK+'); checks++;
 await assert.rejects(() => save(0,0)); checks++;
 // Even permissive legacy profile grants cannot bypass server-managed Elo.
 await db.exec('RESET ROLE; GRANT SELECT,INSERT,UPDATE ON public.profiles TO authenticated; SET ROLE authenticated');
@@ -70,9 +80,13 @@ for (let n = 0; n < combinations.length; n++) {
   const points = 300 + [0,50,120,200][answers[0]] + [0,60,100,150][answers[1]] +
     [0,100,150][answers[2]] + [0,50,100,130][answers[3]] + [0,50,100,150][answers[4]];
   assert.equal(result.elo_rating,Math.min(850,points));
-  const expectedTier = points < 450 ? 'Nhập môn' : points < 600 ? 'Phong trào cơ bản' : points < 750 ? 'Phong trào Trung bình' : 'Phong trào Khá';
+  const expectedTier = tierFor(Math.min(850,points));
   assert.equal(result.tier_name,expectedTier);
   await db.exec('RESET ROLE');
 }
-console.log(`PASS: ${checks} authorization/progress checks and ${combinations.length} complete SQL scoring paths`);
+// Reclassification is repeatable and must preserve actual Elo.
+const before = (await db.query('select id, elo_rating from public.profiles order by id')).rows;
+await db.exec(await readFile(new URL('../migrations/20261018_skill_tiers_v2.sql', import.meta.url), 'utf8'));
+assert.deepEqual((await db.query('select id, elo_rating from public.profiles order by id')).rows,before);
+console.log(`PASS: ${checks} authorization/progress checks, 2001 tier lookups and ${combinations.length} complete SQL scoring paths; migration preserves Elo`);
 await db.close();

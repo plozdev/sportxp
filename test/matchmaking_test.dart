@@ -24,14 +24,19 @@ void main() {
     await expectLater(repo.joinRoom('missing', 'me'), throwsStateError);
   });
   test('Vietnam recreational rank thresholds handle boundaries', () {
-    expect(RankTier.fromElo(449), RankTier.newbie);
-    expect(RankTier.fromElo(450), RankTier.lowerCasual);
-    expect(RankTier.fromElo(599), RankTier.lowerCasual);
-    expect(RankTier.fromElo(600), RankTier.midCasual);
-    expect(RankTier.fromElo(749), RankTier.midCasual);
-    expect(RankTier.fromElo(750), RankTier.upperCasual);
-    expect(RankTier.fromElo(999), RankTier.upperCasual);
-    expect(RankTier.fromElo(1000), RankTier.advanced);
+    expect(RankTier.values.length, 20);
+    expect(RankTier.fromElo(0), RankTier.newbie);
+    expect(RankTier.fromElo(300), RankTier.newbie);
+    for (var i = 1; i < RankTier.values.length; i++) {
+      final tier = RankTier.values[i];
+      expect(RankTier.fromElo(tier.minimumElo - 1), RankTier.values[i - 1]);
+      expect(RankTier.fromElo(tier.minimumElo), tier);
+      expect(RankTier.values[i - 1].maximumElo, tier.minimumElo - 1);
+    }
+    expect(RankTier.fromElo(850), RankTier.intermediatePlus);
+    expect(RankTier.fromElo(1000), RankTier.upperIntermediatePlus);
+    expect(RankTier.fromElo(999999), RankTier.eliteAmateur);
+    expect(RankTier.eliteAmateur.next, isNull);
     expect(() => RankTier.fromElo(-1), throwsArgumentError);
   });
 }

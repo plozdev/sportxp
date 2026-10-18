@@ -5,6 +5,7 @@ import '../../../shared/widgets/bento_card.dart';
 import '../domain/onboarding_quiz.dart';
 import '../domain/onboarding_repository.dart';
 import '../domain/onboarding_state.dart';
+import '../../rankings/domain/rank_tier.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({
@@ -311,7 +312,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
               const Text('ELO KHỞI TẠO · TẠM TÍNH', style: AppTokens.label),
               const Divider(height: 40),
               Text(
-                _state.tierName ?? OnboardingQuiz.tier(_state.answers).label,
+                RankTier.fromElo(elo).label,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 12),

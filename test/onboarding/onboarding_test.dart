@@ -213,7 +213,7 @@ void main() {
         await choose(tester, q, [3, 3, 2, 3, 3][q]);
       }
       expect(find.text('850'), findsOneWidget);
-      expect(find.text('Phong trào Khá'), findsOneWidget);
+      expect(find.text('TB+'), findsOneWidget);
       expect(find.text('Unverified · Chưa xác minh'), findsOneWidget);
       expect(find.text('Hoàng Nguyễn'), findsOneWidget);
       expect(repo.saves, 5);

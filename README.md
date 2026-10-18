@@ -94,6 +94,13 @@ The five-question assessment now runs after login/restored sessions until
 profiles.onboarding_step reaches 5. It resumes saved answers, handles retries,
 shows a provisional player card, and initializes Elo to 300..850 on the server.
 The new Vietnam recreational tiers replace the previous provisional thresholds.
+Taxonomy v2 now has 20 levels (Yếu-/Yếu/Yếu+, TBY, TB, TBK, Khá, Tốt and
+Cao thủ phong trào). These are SportXP calibration boundaries, not a national
+standard. 850 Elo is provisional TB+; 1000 Elo is TBK+, not a professional status.
+After the onboarding migration, apply
+supabase/migrations/20261018_skill_tiers_v2.sql to sync labels without changing Elo.
+Profile progress and onboarding use the same enum. Research and the reviewed
+rating model are in docs/how-elo-works.md.
 Apply supabase/migrations/20261018_onboarding.sql in Supabase SQL Editor before
 using this app version. Migration is provided locally and has not been deployed.
 See docs/onboarding.md for behavior, server requirements and validation details.
