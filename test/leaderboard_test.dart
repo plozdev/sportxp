@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sport_xp_4/core/theme/app_theme.dart';
 import 'package:sport_xp_4/features/rankings/data/mock_leaderboard_repository.dart';
+import 'package:sport_xp_4/features/rankings/domain/leaderboard_repository.dart';
 import 'package:sport_xp_4/features/rankings/presentation/leaderboard_page.dart';
 import 'package:sport_xp_4/features/rankings/presentation/widgets/court_picker_sheet.dart';
 import 'package:sport_xp_4/features/rankings/presentation/widgets/duolingo_rank_row.dart';
-import 'package:sport_xp_4/features/rankings/presentation/widgets/smart_jump_pill.dart';
+import 'package:sport_xp_4/features/rankings/presentation/widgets/my_fixed_standing_bar.dart';
 import 'package:sport_xp_4/features/rooms/data/mock_room_repository.dart';
 
 void main() {
@@ -42,7 +43,7 @@ void main() {
   });
 
   group('LeaderboardPage Duolingo UI & Court Selection', () {
-    testWidgets('renders clean Duolingo list, promotion line, and court switcher', (tester) async {
+    testWidgets('renders explicit court header, promotion line, and dedicated bottom bar', (tester) async {
       final sandbox = MockRoomRepository(userId: 'user-1', displayName: 'Tuấn');
       final repo = MockLeaderboardRepository(sandbox);
 
@@ -62,7 +63,8 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Check Court Header and Mock Notice
+      // Check explicit court header & mock notice
+      expect(find.text('BẢNG XẾP HẠNG THEO SÂN'), findsOneWidget);
       expect(find.text('Sân Đào Duy Anh'), findsOneWidget);
       expect(find.textContaining('BẢNG XẾP HẠNG GIẢ LẬP'), findsOneWidget);
 
@@ -77,6 +79,10 @@ void main() {
       expect(find.byType(DuolingoRankRow), findsWidgets);
       expect(find.text('Bảo · giả lập'), findsWidgets);
 
+      // Check dedicated fixed standing bar at the bottom
+      expect(find.byType(MyFixedStandingBar), findsOneWidget);
+      expect(find.textContaining('VỊ TRÍ CỦA BẠN TẠI'), findsOneWidget);
+
       // Switch to "Quanh bạn (±5)"
       await tester.tap(find.text('Quanh bạn (±5)'));
       await tester.pumpAndSettle();
@@ -84,8 +90,8 @@ void main() {
       // In nearMe mode, current user is displayed
       expect(find.text('Tuấn'), findsWidgets);
 
-      // Tap court header to open CourtPickerSheet
-      await tester.tap(find.text('Sân Đào Duy Anh'));
+      // Tap court picker button to open CourtPickerSheet
+      await tester.tap(find.byKey(const Key('court_picker_button')));
       await tester.pumpAndSettle();
 
       expect(find.byType(CourtPickerSheet), findsOneWidget);
@@ -105,19 +111,27 @@ void main() {
       expect(find.text('UY TÍN'), findsOneWidget);
     });
 
-    testWidgets('SmartJumpPill triggers scroll callback', (tester) async {
+    testWidgets('MyFixedStandingBar renders and triggers scroll callback', (tester) async {
       var jumped = false;
       final sandbox = MockRoomRepository(userId: 'user-1', displayName: 'Tuấn');
       final profile = (MockLeaderboardRepository(sandbox).players().first);
+      const rankInfo = PlayerCourtRank(
+        rank: 14,
+        totalPlayers: 35,
+        courtName: 'Sân Đào Duy Anh',
+        courtId: 'court-a',
+        pointsToNextRank: 20,
+        nextPlayerName: 'Linh',
+      );
 
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.dark,
           home: Scaffold(
-            body: SmartJumpPill(
+            body: MyFixedStandingBar(
               userProfile: profile,
-              rank: 14,
-              onTap: () {
+              rankSummary: rankInfo,
+              onScrollToMyRank: () {
                 jumped = true;
               },
             ),
@@ -126,9 +140,9 @@ void main() {
       );
 
       expect(find.text('#14'), findsOneWidget);
-      expect(find.textContaining('Bạn:'), findsOneWidget);
+      expect(find.textContaining('VỊ TRÍ CỦA BẠN TẠI'), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('smart_jump_pill_button')));
+      await tester.tap(find.byKey(const Key('my_fixed_standing_row')));
       expect(jumped, true);
     });
   });

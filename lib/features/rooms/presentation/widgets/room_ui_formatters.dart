@@ -29,6 +29,10 @@ abstract final class RoomUiFormatters {
     final endTime =
         '${end.hour.toString().padLeft(2, '0')}:${end.minute.toString().padLeft(2, '0')}';
 
+    final isOvernight =
+        end.year != start.year || end.month != start.month || end.day != start.day;
+    final overnightTag = isOvernight ? ' (+1 ngày)' : '';
+
     final durationHours = end.difference(start).inHours;
     final durationMins = end.difference(start).inMinutes % 60;
     final durationStr =
@@ -39,11 +43,35 @@ abstract final class RoomUiFormatters {
             : '${durationMins}p';
 
     if (isToday) {
-      return 'Hôm nay • $startTime – $endTime ($durationStr)';
+      return 'Hôm nay, $startTime–$endTime$overnightTag ($durationStr)';
     } else if (isTomorrow) {
-      return 'Ngày mai • $startTime – $endTime ($durationStr)';
+      return 'Ngày mai, $startTime–$endTime$overnightTag ($durationStr)';
     } else {
-      return '$weekday, ${start.day}/${start.month} • $startTime – $endTime ($durationStr)';
+      return '$weekday, ${start.day}/${start.month} • $startTime–$endTime$overnightTag ($durationStr)';
+    }
+  }
+
+  static String deadline(DateTime dt) {
+    final now = DateTime.now();
+    final isToday =
+        dt.year == now.year && dt.month == now.month && dt.day == now.day;
+    final tomorrow = now.add(const Duration(days: 1));
+    final isTomorrow =
+        dt.year == tomorrow.year &&
+        dt.month == tomorrow.month &&
+        dt.day == tomorrow.day;
+
+    final timeStr =
+        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    final dateStr =
+        '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+
+    if (isToday) {
+      return 'Trước $timeStr hôm nay';
+    } else if (isTomorrow) {
+      return 'Trước $timeStr ngày mai';
+    } else {
+      return 'Trước $timeStr, $dateStr';
     }
   }
 
@@ -59,7 +87,7 @@ abstract final class RoomUiFormatters {
   }
 
   static String skillRange(int minElo, int maxElo) {
-    if (minElo <= 0 && maxElo >= 2500) return 'Mọi trình độ';
+    if (minElo <= 0 && maxElo >= 2000) return 'Mọi trình độ';
     final minTier = RankTier.fromElo(minElo.clamp(0, 2500));
     final maxTier = RankTier.fromElo(maxElo.clamp(0, 2500));
     if (minTier == maxTier) return '${minTier.label} ($minElo–$maxElo)';

@@ -6,8 +6,8 @@ import '../../profile/domain/player_profile.dart';
 import '../domain/leaderboard_repository.dart';
 import 'widgets/court_picker_sheet.dart';
 import 'widgets/duolingo_rank_row.dart';
+import 'widgets/my_fixed_standing_bar.dart';
 import 'widgets/player_detail_modal.dart';
-import 'widgets/smart_jump_pill.dart';
 
 enum LeaderboardViewMode {
   all('Tất cả'),
@@ -54,7 +54,6 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
   LeaderboardViewMode _viewMode = LeaderboardViewMode.all;
   bool _isLoading = true;
   String? _errorMessage;
-  bool _showJumpPill = false;
 
   @override
   void initState() {
@@ -62,7 +61,6 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
     if (widget.initialCourtId != null) {
       _selectedCourtId = widget.initialCourtId!;
     }
-    _scrollController.addListener(_onScroll);
     _fetchData();
   }
 
@@ -77,33 +75,8 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
 
   @override
   void dispose() {
-    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
-  }
-
-  void _onScroll() {
-    if (_viewMode == LeaderboardViewMode.nearMe || _userCourtRank == null) {
-      if (_showJumpPill) setState(() => _showJumpPill = false);
-      return;
-    }
-
-    final userIndex = _allPlayers.indexWhere(
-      (p) => p.id == (widget.selectedPlayerId ?? 'me'),
-    );
-    if (userIndex == -1) return;
-
-    // Ước tính vị trí của user trên màn hình
-    final estimatedUserOffset = userIndex * 62.0;
-    final currentOffset = _scrollController.offset;
-    final viewportHeight = _scrollController.position.viewportDimension;
-
-    final isOffscreen = (estimatedUserOffset < currentOffset - 60) ||
-        (estimatedUserOffset > currentOffset + viewportHeight - 100);
-
-    if (isOffscreen != _showJumpPill) {
-      setState(() => _showJumpPill = isOffscreen);
-    }
   }
 
   Future<void> _fetchData() async {
@@ -195,7 +168,6 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
     setState(() {
       _selectedCourtId = courtId;
       _viewMode = LeaderboardViewMode.all;
-      _showJumpPill = false;
     });
     _fetchData();
   }
@@ -204,7 +176,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
     final currentUserId = widget.selectedPlayerId ?? 'me';
     final index = _displayPlayers.indexWhere((p) => p.id == currentUserId);
     if (index != -1 && _scrollController.hasClients) {
-      final targetOffset = index * 62.0;
+      final targetOffset = index * 70.0;
       _scrollController.animateTo(
         targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
         duration: const Duration(milliseconds: 400),
@@ -230,33 +202,43 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Stack(
-        children: [
-          Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: AppTokens.contentWidth),
-              child: _isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(color: AppColors.primary),
-                    )
-                  : _errorMessage != null
-                  ? _buildErrorView()
-                  : _buildLeaderboardContent(),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
+          : _errorMessage != null
+          ? _buildErrorView()
+          : Column(
+              children: [
+                // Phần danh sách cuộn
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: AppTokens.contentWidth,
+                      ),
+                      child: _buildLeaderboardContent(),
+                    ),
+                  ),
+                ),
+                // Vùng cố định riêng biệt hiển thị vị trí của bạn, KHÔNG che bất kỳ hàng nào
+                if (_userCourtRank != null && _currentUserProfile != null)
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: AppTokens.contentWidth,
+                      ),
+                      child: MyFixedStandingBar(
+                        userProfile: _currentUserProfile!,
+                        rankSummary: _userCourtRank!,
+                        onScrollToMyRank: _scrollToMyRank,
+                      ),
+                    ),
+                  ),
+              ],
             ),
-          ),
-          // Smart Floating Pill khi người dùng cuộn xa vị trí của mình
-          if (!_isLoading &&
-              _showJumpPill &&
-              _userCourtRank != null &&
-              _currentUserProfile != null)
-            SmartJumpPill(
-              userProfile: _currentUserProfile!,
-              rank: _userCourtRank!.rank,
-              onTap: _scrollToMyRank,
-            ),
-        ],
-      ),
     );
   }
 
@@ -294,82 +276,121 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
 
     return ListView(
       controller: _scrollController,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 90),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       children: [
-        // 1. Clean Court Header with Dropdown Sheet
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            InkWell(
-              onTap: () {
-                CourtPickerSheet.show(
-                  context,
-                  courts: _courts,
-                  selectedCourtId: _selectedCourtId,
-                  onSelectCourt: _onSelectCourt,
-                );
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withAlpha(25),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.sports_tennis,
-                        size: 20,
+        // 1. Header Bảng Xếp Hạng Theo Sân rõ ràng
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(
+                        Icons.stadium_outlined,
+                        size: 15,
                         color: AppColors.primary,
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              _currentCourtName,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.text,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            const Icon(
-                              Icons.keyboard_arrow_down,
-                              color: AppColors.muted,
-                              size: 20,
-                            ),
-                          ],
+                      SizedBox(width: 6),
+                      Text(
+                        'BẢNG XẾP HẠNG THEO SÂN',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                          color: AppColors.primary,
                         ),
-                        Text(
-                          '${_allPlayers.length} tay vợt · ${_userCourtRank != null ? "Vị trí của bạn: #${_userCourtRank!.rank}" : ""}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.muted,
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      InkWell(
+                        key: const Key('court_picker_button'),
+                        onTap: () {
+                          CourtPickerSheet.show(
+                            context,
+                            courts: _courts,
+                            selectedCourtId: _selectedCourtId,
+                            onSelectCourt: _onSelectCourt,
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withAlpha(25),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: AppColors.primary.withAlpha(100),
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Đổi sân',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              SizedBox(width: 2),
+                              Icon(
+                                Icons.keyboard_arrow_down,
+                                size: 16,
+                                color: AppColors.primary,
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        onPressed: () {
+                          widget.onRefresh();
+                          _fetchData();
+                        },
+                        icon: const Icon(Icons.refresh, color: AppColors.muted),
+                        tooltip: 'Cập nhật bảng xếp hạng',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _currentCourtName,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.text,
                 ),
               ),
-            ),
-            IconButton(
-              onPressed: () {
-                widget.onRefresh();
-                _fetchData();
-              },
-              icon: const Icon(Icons.refresh, color: AppColors.muted),
-              tooltip: 'Cập nhật bảng xếp hạng',
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                'Xếp hạng riêng cho các tay vợt thi đấu tại sân này · ${_allPlayers.length} tay vợt',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.muted,
+                ),
+              ),
+            ],
+          ),
         ),
 
         const SizedBox(height: 12),
@@ -414,7 +435,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                   borderRadius: BorderRadius.circular(10),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    padding: const EdgeInsets.symmetric(vertical: 9),
                     decoration: BoxDecoration(
                       color: _viewMode == mode
                           ? AppColors.primary.withAlpha(25)
@@ -424,15 +445,16 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                         color: _viewMode == mode
                             ? AppColors.primary
                             : AppColors.border,
+                        width: _viewMode == mode ? 1.5 : 1.0,
                       ),
                     ),
                     child: Text(
                       mode.label,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: _viewMode == mode
-                            ? FontWeight.w700
-                            : FontWeight.w500,
+                            ? FontWeight.w800
+                            : FontWeight.w600,
                         color: _viewMode == mode
                             ? AppColors.text
                             : AppColors.muted,
@@ -461,7 +483,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
             ),
             child: const Center(
               child: Text(
-                'Chưa có vận động viên trong bảng xếp hạng.',
+                'Chưa có vận động viên trong bảng xếp hạng sân này.',
                 style: TextStyle(color: AppColors.muted),
               ),
             ),
@@ -471,7 +493,6 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
             Builder(
               builder: (ctx) {
                 final player = _displayPlayers[i];
-                // Tính thứ hạng thực tế trong toàn bộ danh sách sân
                 final realRank = _allPlayers.indexOf(player) + 1;
                 final isUser = player.id == currentUserId;
 
@@ -491,7 +512,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                         );
                       },
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
 
                     // Duolingo Promotion Zone Divider Line sau Top 3
                     if (_viewMode == LeaderboardViewMode.all && realRank == 3) ...[
@@ -500,7 +521,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                         children: [
                           Expanded(
                             child: Divider(
-                              color: const Color(0xFFFFD700).withAlpha(90),
+                              color: const Color(0xFFFFD700).withAlpha(100),
                               thickness: 1,
                             ),
                           ),
@@ -510,7 +531,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                               children: [
                                 const Icon(
                                   Icons.arrow_upward,
-                                  size: 11,
+                                  size: 12,
                                   color: Color(0xFFFFD700),
                                 ),
                                 const SizedBox(width: 4),
@@ -520,7 +541,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                                     fontSize: 10,
                                     fontWeight: FontWeight.w800,
                                     letterSpacing: 0.8,
-                                    color: const Color(0xFFFFD700).withAlpha(220),
+                                    color: const Color(0xFFFFD700).withAlpha(230),
                                   ),
                                 ),
                               ],
@@ -528,13 +549,13 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                           ),
                           Expanded(
                             child: Divider(
-                              color: const Color(0xFFFFD700).withAlpha(90),
+                              color: const Color(0xFFFFD700).withAlpha(100),
                               thickness: 1,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
                     ],
                   ],
                 );

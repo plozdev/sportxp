@@ -352,7 +352,11 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(find.text('Trận đấu / Điểm danh'), 200);
+      await tester.scrollUntilVisible(
+        find.text('Trận đấu / Điểm danh'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.drag(find.byType(ListView).first, const Offset(0, -160));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Trận đấu / Điểm danh'));
