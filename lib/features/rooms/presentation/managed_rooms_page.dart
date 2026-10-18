@@ -529,13 +529,6 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
                   children: [
-                    // Mock Sandbox Controller
-                    MockRoomControls(
-                      repository: widget.repository,
-                      allowReset: true,
-                      onChanged: () => _load(reset: true),
-                    ),
-
                     // Notices Banner
                     _buildNoticesBanner(),
 

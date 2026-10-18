@@ -15,11 +15,15 @@ class PlayerProfile {
     this.onboardingStep = 0,
     this.publicId,
     this.socialVisibility = 'public',
+    this.isIdentityVerified = false,
+    this.confirmedMatchesCount = 0,
   }) : backendTierName = tierName;
 
   final String id, displayName;
   final String? publicId;
   final String socialVisibility;
+  final bool isIdentityVerified;
+  final int confirmedMatchesCount;
 
   /// Kept for diagnostics while the SQL label migration is being applied.
   final String backendTierName;
@@ -53,6 +57,12 @@ class PlayerProfile {
       homeCourtName: court?['name'] as String?,
       createdAt: parsedDate,
       onboardingStep: (json['onboarding_step'] as num?)?.toInt() ?? 0,
+      isIdentityVerified: json['is_identity_verified'] as bool? ?? false,
+      confirmedMatchesCount:
+          (json['confirmed_matches_count'] as num?)?.toInt() ??
+          (json['matches_played'] as num?)?.toInt() ??
+          (json['placement_matches'] as num?)?.toInt() ??
+          0,
     );
   }
 
@@ -96,16 +106,20 @@ class PlayerProfile {
     );
   }
 
+  /// Đã có lịch sử thi đấu xác nhận hay chưa
+  bool get hasMatchHistory => confirmedMatchesCount > 0;
+
   String get trustStatusText {
+    if (!hasMatchHistory) return 'Uy tín khởi tạo · chưa đủ lịch sử';
     if (trustScore >= 95) return 'Uy tín tuyệt đối';
     if (trustScore >= 80) return 'Đáng tin cậy';
     if (trustScore >= 60) return 'Cần cải thiện';
     return 'Cảnh báo bùng kèo';
   }
 
-  /// Đã hoàn tất 5 trận phân hạng ban đầu hay chưa
-  bool get isCalibrated => winStreak >= 5;
+  /// Đã hoàn tất 5 trận phân hạng ban đầu hay chưa (dựa trên số trận phân hạng đã xác nhận)
+  bool get isCalibrated => placementMatchesCompleted >= 5;
 
-  /// Số trận phân hạng đã hoàn tất (0..5)
-  int get placementMatchesCompleted => winStreak.clamp(0, 5);
+  /// Số trận phân hạng đã hoàn tất (0..5), độc lập với chuỗi thắng
+  int get placementMatchesCompleted => confirmedMatchesCount.clamp(0, 5);
 }

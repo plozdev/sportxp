@@ -24,6 +24,7 @@ import '../features/rooms/data/managed_room_repository.dart';
 import '../features/rooms/data/mock_room_repository.dart';
 import '../features/rooms/domain/room_repository.dart';
 import '../features/rooms/presentation/managed_rooms_page.dart';
+import '../features/rooms/presentation/mock_connections_sheet.dart';
 import '../features/rooms/presentation/room_editor_page.dart';
 
 class SportXpShell extends StatefulWidget {
@@ -168,6 +169,158 @@ class _SportXpShellState extends State<SportXpShell> {
     }
   }
 
+  Future<void> _openMockConnections() async {
+    final sandbox = _sandbox;
+    if (sandbox == null) return;
+    await showMockConnectionsSheet(
+      context,
+      sandbox,
+      onChanged: _refreshSandbox,
+    );
+  }
+
+  void _resetMockSandbox() {
+    final sandbox = _sandbox;
+    if (sandbox == null) return;
+    sandbox.reset();
+    _refreshSandbox();
+    _message('Đã đặt lại dữ liệu mô phỏng trong RAM.');
+  }
+
+  Widget _buildSandboxSection() {
+    final sandbox = _sandbox!;
+    final actorName = sandbox.people[sandbox.actorId] ?? sandbox.actorId;
+    return BentoCard(
+      child: Material(
+        color: Colors.transparent,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: AppColors.streak.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.science_outlined,
+                    size: 15,
+                    color: AppColors.streak,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'CHẾ ĐỘ THỬ NGHIỆM',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.8,
+                    color: AppColors.streak,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'SANDBOX',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.muted,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Công cụ thử nghiệm MVP được gom tại đây để giữ các màn chính gần với trải nghiệm thực.',
+              style: TextStyle(fontSize: 11, color: AppColors.muted),
+            ),
+            const SizedBox(height: 8),
+            const Divider(height: 1, color: AppColors.border),
+            ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(
+                Icons.switch_account_outlined,
+                color: AppColors.primary,
+                size: 20,
+              ),
+              title: const Text(
+                'Đổi tài khoản giả lập',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(
+                'Đang thử: $actorName\nHồ sơ bên dưới là tài khoản đăng nhập thật.',
+                style: const TextStyle(fontSize: 11, color: AppColors.muted),
+              ),
+              trailing: const Icon(
+                Icons.chevron_right,
+                size: 18,
+                color: AppColors.muted,
+              ),
+              onTap: _switchMockAccount,
+            ),
+            const Divider(height: 1, color: AppColors.border),
+            ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(
+                Icons.people_outline,
+                color: AppColors.primary,
+                size: 20,
+              ),
+              title: const Text(
+                'Kết nối giả lập',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              subtitle: const Text(
+                'Mô phỏng quan hệ bạn bè và chặn trong sandbox',
+                style: TextStyle(fontSize: 11, color: AppColors.muted),
+              ),
+              trailing: const Icon(
+                Icons.chevron_right,
+                size: 18,
+                color: AppColors.muted,
+              ),
+              onTap: _openMockConnections,
+            ),
+            const Divider(height: 1, color: AppColors.border),
+            ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(
+                Icons.restart_alt,
+                color: AppColors.loss,
+                size: 20,
+              ),
+              title: const Text(
+                'Đặt lại dữ liệu mô phỏng',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.loss,
+                ),
+              ),
+              subtitle: const Text(
+                'Khôi phục phòng và hoạt động về mặc định trong RAM',
+                style: TextStyle(fontSize: 11, color: AppColors.muted),
+              ),
+              onTap: _resetMockSandbox,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _message(String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
@@ -306,7 +459,43 @@ class _SportXpShellState extends State<SportXpShell> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('SPORTXP')),
+    appBar: AppBar(
+      title: Row(
+        children: [
+          const Text('SPORTXP'),
+          if (_mockRooms && _sandbox != null) ...[
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.science_outlined,
+                    size: 13,
+                    color: AppColors.streak,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    'Vai: ${_sandbox!.people[_sandbox!.actorId] ?? _sandbox!.actorId}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.muted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    ),
     body: SafeArea(
       child: IndexedStack(
         index: _index,
@@ -361,18 +550,7 @@ class _SportXpShellState extends State<SportXpShell> {
                 ),
           ProfilePage(
             accountSwitcher: _mockRooms && _sandbox != null
-                ? ListTile(
-                    leading: const Icon(
-                      Icons.switch_account_outlined,
-                      color: AppColors.primary,
-                    ),
-                    title: const Text('Đổi tài khoản giả lập'),
-                    subtitle: Text(
-                      'Đang thử: ${_sandbox!.people[_sandbox!.actorId]}\nHồ sơ bên dưới là tài khoản đăng nhập thật.',
-                    ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: _switchMockAccount,
-                  )
+                ? _buildSandboxSection()
                 : null,
             profile: _profile,
             isSignedIn: _userId != null,

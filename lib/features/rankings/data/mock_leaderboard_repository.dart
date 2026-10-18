@@ -12,6 +12,7 @@ class MockLeaderboardRepository implements LeaderboardRepository {
   /// Tương thích với test cũ và sandbox identity
   List<PlayerProfile> players() {
     const streaks = {'linh': 4, 'minh': 2, 'an': 0, 'bao': 6};
+    const matchCounts = {'linh': 8, 'minh': 5, 'an': 0, 'bao': 12};
     final rows =
         [
           for (final person in sandbox.people.entries)
@@ -22,6 +23,7 @@ class MockLeaderboardRepository implements LeaderboardRepository {
               tierName: '',
               trustScore: 100,
               winStreak: streaks[person.key] ?? 0,
+              confirmedMatchesCount: matchCounts[person.key] ?? 0,
               homeCourtId: _courtForPlayer(person.key),
               homeCourtName: _courtNameForPlayer(person.key),
             ),
@@ -126,6 +128,7 @@ class MockLeaderboardRepository implements LeaderboardRepository {
           tierName: '',
           trustScore: 95 + (i % 5),
           winStreak: _clubMembersSeed[i].$3,
+          confirmedMatchesCount: 10 + i,
           homeCourtId: courtId,
           homeCourtName: courtName,
         ),

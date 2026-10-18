@@ -280,18 +280,19 @@ class _AthleteHeaderCard extends StatelessWidget {
                           )
                         : null,
                   ),
-                  Container(
-                    padding: const EdgeInsets.all(3),
-                    decoration: const BoxDecoration(
-                      color: AppColors.surface,
-                      shape: BoxShape.circle,
+                  if (player.isIdentityVerified)
+                    Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        color: AppColors.surface,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.verified,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.verified,
-                      size: 16,
-                      color: AppColors.primary,
-                    ),
-                  ),
                 ],
               ),
               const SizedBox(width: 14),

@@ -303,12 +303,6 @@ class _ActivityFeedPageState extends State<ActivityFeedPage> {
             icon: const Icon(Icons.refresh_rounded, size: 20),
             tooltip: 'Tải lại hoạt động',
           ),
-          if (widget.rooms is MockRoomRepository)
-            TextButton.icon(
-              onPressed: _connections,
-              icon: const Icon(Icons.people_outline, size: 16),
-              label: const Text('Kết nối giả lập', style: TextStyle(fontSize: 12)),
-            ),
         ],
       ),
 
