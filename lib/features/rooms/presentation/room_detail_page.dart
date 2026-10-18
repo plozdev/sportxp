@@ -728,90 +728,87 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
               ),
             )
           else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: room.members.length,
-              separatorBuilder: (_, _) => const Divider(height: 1, color: AppColors.border),
-              itemBuilder: (context, index) {
-                final member = room.members[index];
-                final name = member['name'] as String? ?? 'Người chơi';
-                final role = member['role'] as String? ?? 'MEMBER';
-                final status = member['status'] as String? ?? 'REGISTERED';
-                final isPlaying = member['is_playing'] == true;
-                final cancelKind = member['cancellation_kind'] as String?;
+            for (int index = 0; index < room.members.length; index++) ...[
+              if (index > 0) const Divider(height: 1, color: AppColors.border),
+              _buildMemberRow(room.members[index]),
+            ],
+        ],
+      ),
+    );
+  }
 
-                final isHostMember = role == 'HOST';
+  Widget _buildMemberRow(Map<String, dynamic> member) {
+    final name = member['name'] as String? ?? 'Người chơi';
+    final role = member['role'] as String? ?? 'MEMBER';
+    final status = member['status'] as String? ?? 'REGISTERED';
+    final isPlaying = member['is_playing'] == true;
+    final cancelKind = member['cancellation_kind'] as String?;
+    final isHostMember = role == 'HOST';
 
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Row(
-                    children: [
-                      // Avatar with initial
-                      CircleAvatar(
-                        radius: 18,
-                        backgroundColor: isHostMember
-                            ? AppColors.primary.withValues(alpha: 0.2)
-                            : AppColors.background,
-                        child: Text(
-                          name.isNotEmpty ? name[0].toUpperCase() : '?',
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          // Avatar with initial
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: isHostMember
+                ? AppColors.primary.withValues(alpha: 0.2)
+                : AppColors.background,
+            child: Text(
+              name.isNotEmpty ? name[0].toUpperCase() : '?',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: isHostMember ? AppColors.primary : AppColors.text,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Name and details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: AppColors.text,
+                      ),
+                    ),
+                    if (isHostMember) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'HOST',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 9,
                             fontWeight: FontWeight.bold,
-                            color: isHostMember ? AppColors.primary : AppColors.text,
+                            color: AppColors.primary,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
-
-                      // Name and details
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Text(
-                                  name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
-                                    color: AppColors.text,
-                                  ),
-                                ),
-                                if (isHostMember) ...[
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: const Text(
-                                      'HOST',
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${status == 'REGISTERED' ? 'Đã vào' : status == 'WAITLIST' ? 'Danh sách chờ' : status} · ${isPlaying ? 'Có chơi' : 'Chỉ tổ chức'}${cancelKind == null ? '' : ' · $cancelKind'}',
-                              style: AppTokens.label,
-                            ),
-                          ],
-                        ),
-                      ),
                     ],
-                  ),
-                );
-              },
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${status == 'REGISTERED' ? 'Đã vào' : status == 'WAITLIST' ? 'Danh sách chờ' : status} · ${isPlaying ? 'Có chơi' : 'Chỉ tổ chức'}${cancelKind == null ? '' : ' · $cancelKind'}',
+                  style: AppTokens.label,
+                ),
+              ],
             ),
+          ),
         ],
       ),
     );
