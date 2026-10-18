@@ -385,7 +385,7 @@ class _SportXpShellState extends State<SportXpShell> {
         ],
       ),
     ),
-    floatingActionButton: _index < 2
+    floatingActionButton: _index == 1
         ? FloatingActionButton.extended(
             onPressed: _create,
             icon: const Icon(Icons.add),

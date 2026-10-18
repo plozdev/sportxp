@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:sport_xp_4/core/theme/app_theme.dart';
 import 'package:sport_xp_4/features/feed/domain/activity.dart';
 
-/// Graphic mô phỏng sân cầu lông thể thao mang phong cách bản đồ Strava.
+/// Graphic mô phỏng sân cầu lông thể thao mang phong cách Strava.
+/// Tinh gọn, chỉ hiển thị hình sân vector cùng một thông số thành tích chuẩn xác,
+/// tránh lặp lại tên sân và tránh nhãn gây hiểu nhầm khi còn trận chờ xác nhận.
 class BadmintonCourtGraphic extends StatelessWidget {
   const BadmintonCourtGraphic({
     super.key,
     required this.post,
-    this.height = 140,
+    this.height = 130,
   });
 
   final ActivityView post;
@@ -20,7 +22,8 @@ class BadmintonCourtGraphic extends StatelessWidget {
     final isPersonal = post.kind == ActivityKind.personal;
     final wins = stats.wins ?? 0;
     final losses = stats.losses ?? 0;
-    final winRate = stats.total > 0 ? ((wins / stats.total) * 100).round() : 0;
+    final hasPending = stats.pending > 0;
+    final isAllConfirmed = stats.confirmed == stats.total && stats.total > 0;
 
     return Container(
       height: height,
@@ -30,13 +33,13 @@ class BadmintonCourtGraphic extends StatelessWidget {
           color: AppColors.primary.withValues(alpha: 0.25),
           width: 1,
         ),
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            const Color(0xFF0D1812), // Deep emerald court dark
-            const Color(0xFF080C10),
-            const Color(0xFF0B141C),
+            Color(0xFF0D1812), // Deep emerald court dark
+            Color(0xFF080C10),
+            Color(0xFF0B141C),
           ],
         ),
       ),
@@ -54,7 +57,7 @@ class BadmintonCourtGraphic extends StatelessWidget {
             // Hiệu ứng ánh sáng Neon ở giữa sân
             Center(
               child: Container(
-                width: 120,
+                width: 130,
                 height: 70,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
@@ -70,7 +73,7 @@ class BadmintonCourtGraphic extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.6),
+                  color: Colors.black.withValues(alpha: 0.65),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
                     color: AppColors.primary.withValues(alpha: 0.3),
@@ -99,47 +102,55 @@ class BadmintonCourtGraphic extends StatelessWidget {
               ),
             ),
 
-            // Huy hiệu kết quả ở góc trên bên phải
+            // Huy hiệu tiến độ xác nhận ở góc trên bên phải
             Positioned(
               top: 10,
               right: 12,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.6),
+                  color: Colors.black.withValues(alpha: 0.65),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: wins > losses
-                        ? AppColors.primary.withValues(alpha: 0.4)
-                        : AppColors.border,
+                    color: hasPending
+                        ? AppColors.streak.withValues(alpha: 0.4)
+                        : (isAllConfirmed
+                            ? AppColors.primary.withValues(alpha: 0.4)
+                            : AppColors.border),
                   ),
                 ),
                 child: Text(
-                  isPersonal
-                      ? (wins > losses && losses == 0
-                          ? '🔥 BẤT BẠI'
-                          : '$winRate% THẮNG')
-                      : '${stats.confirmed}/${stats.total} ĐÃ XÁC NHẬN',
+                  hasPending
+                      ? 'CHỜ XÁC NHẬN'
+                      : (isAllConfirmed && isPersonal && wins > 0 && losses == 0
+                          ? 'TOÀN THẮNG'
+                          : 'ĐÃ CHỐT'),
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
-                    color: wins > losses ? AppColors.primary : AppColors.text,
+                    color: hasPending
+                        ? AppColors.streak
+                        : (isAllConfirmed && isPersonal && wins > 0 && losses == 0
+                            ? AppColors.primary
+                            : AppColors.text),
                   ),
                 ),
               ),
             ),
 
-            // Trung tâm: Thông số hiệu suất nổi bật (Headline Strava Metric)
+            // Trung tâm: Thành tích thể hiện rõ ràng bằng tiếng Việt
             Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    isPersonal ? '${wins}W - ${losses}L' : '${stats.total} SET',
+                    isPersonal
+                        ? '$wins thắng · $losses thua'
+                        : '${stats.confirmed}/${stats.total} trận chốt',
                     style: AppTokens.metric.copyWith(
-                      fontSize: 32,
+                      fontSize: 24,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
+                      letterSpacing: -0.2,
                       color: isPersonal && wins >= losses
                           ? AppColors.primary
                           : AppColors.text,
@@ -151,54 +162,17 @@ class BadmintonCourtGraphic extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(
                     isPersonal
-                        ? 'TỔNG ${stats.total} TRẬN ĐÃ THI ĐẤU'
-                        : 'BUỔI GIAO LƯU CLB',
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
-                      color: AppColors.muted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Góc dưới bên trái: Địa điểm sân
-            Positioned(
-              bottom: 8,
-              left: 12,
-              right: 12,
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.location_on,
-                    size: 11,
-                    color: AppColors.muted,
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      post.courtName,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.muted,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const Text(
-                    'SPORTXP MATCH LOG',
+                        ? (hasPending
+                            ? 'đã xác nhận · còn ${stats.pending} trận chờ'
+                            : 'tổng ${stats.total} trận toàn buổi')
+                        : 'buổi chơi hoàn tất',
                     style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.8,
-                      color: AppColors.border,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: hasPending ? AppColors.streak : AppColors.muted,
                     ),
                   ),
                 ],

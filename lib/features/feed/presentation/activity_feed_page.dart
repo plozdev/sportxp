@@ -727,6 +727,8 @@ class _ActivityFeedPageState extends State<ActivityFeedPage> {
           padding: const EdgeInsets.only(bottom: 16),
           child: ActivityCard(
             post: post,
+            onEdit: () => _edit(post),
+            onDelete: _busy.contains(post.id) ? null : () => _delete(post),
             actions: [
               // Nút Kudos / Thả tim thể thao
               OutlinedButton.icon(
@@ -815,26 +817,6 @@ class _ActivityFeedPageState extends State<ActivityFeedPage> {
                 ),
                 label: const Text('Chia sẻ'),
               ),
-              // Nút Sửa & Xóa bài cho tác giả
-              if (post.isOwner) ...[
-                TextButton.icon(
-                  onPressed: () => _edit(post),
-                  icon: const Icon(Icons.edit_outlined, size: 16),
-                  label: const Text('Sửa bài'),
-                ),
-                TextButton.icon(
-                  onPressed: _busy.contains(post.id) ? null : () => _delete(post),
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    size: 16,
-                    color: AppColors.loss,
-                  ),
-                  label: const Text(
-                    'Xóa bài',
-                    style: TextStyle(color: AppColors.loss),
-                  ),
-                ),
-              ],
             ],
           ),
         ),

@@ -13,12 +13,16 @@ class ActivityCard extends StatelessWidget {
     this.caption,
     this.audience,
     this.actions = const [],
+    this.onEdit,
+    this.onDelete,
   });
 
   final ActivityView post;
   final String? caption;
   final ActivityAudience? audience;
   final List<Widget> actions;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   String _formatTime(DateTime dateTime) {
     final now = DateTime.now();
@@ -46,12 +50,14 @@ class ActivityCard extends StatelessWidget {
     final currentAudience = audience ?? post.audience;
     final currentCaption = caption ?? post.caption;
     final isPersonal = post.kind == ActivityKind.personal;
+    final wins = stats.wins ?? 0;
+    final losses = stats.losses ?? 0;
 
     return BentoCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 1. ATHLETE HEADER (Avatar, Tên, Badge cá nhân/host, Quyền riêng tư & Nút chia sẻ)
+          // 1. NGƯỜI ĐĂNG (Avatar, Tên, Badge, Thời gian & Menu ⋯)
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -169,37 +175,108 @@ class ActivityCard extends StatelessWidget {
                   ],
                 ),
               ),
-              // Nút chia sẻ nhanh ở Header
-              IconButton(
-                onPressed: () => ActivityShareSheet.show(context, post),
-                icon: const Icon(
-                  Icons.share_outlined,
-                  size: 18,
-                  color: AppColors.muted,
+
+              // Menu ⋯ thu gọn các thao tác quản trị (Sửa / Xóa) & Chia sẻ
+              if (post.isOwner && (onEdit != null || onDelete != null))
+                PopupMenuButton<String>(
+                  icon: const Icon(
+                    Icons.more_horiz_rounded,
+                    color: AppColors.muted,
+                    size: 20,
+                  ),
+                  tooltip: 'Tùy chọn bài viết',
+                  color: AppColors.surface,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: const BorderSide(color: AppColors.border),
+                  ),
+                  onSelected: (value) {
+                    if (value == 'share') {
+                      ActivityShareSheet.show(context, post);
+                    } else if (value == 'edit') {
+                      onEdit?.call();
+                    } else if (value == 'delete') {
+                      onDelete?.call();
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'share',
+                      child: Row(
+                        children: [
+                          Icon(Icons.share_outlined, size: 16),
+                          SizedBox(width: 10),
+                          Text('Chia sẻ hoạt động'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit_outlined, size: 16),
+                          SizedBox(width: 10),
+                          Text('Sửa bài'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline, size: 16, color: AppColors.loss),
+                          SizedBox(width: 10),
+                          Text('Xóa bài', style: TextStyle(color: AppColors.loss)),
+                        ],
+                      ),
+                    ),
+                  ],
+                )
+              else
+                IconButton(
+                  onPressed: () => ActivityShareSheet.show(context, post),
+                  icon: const Icon(
+                    Icons.share_outlined,
+                    size: 18,
+                    color: AppColors.muted,
+                  ),
+                  tooltip: 'Chia sẻ hoạt động',
                 ),
-                tooltip: 'Chia sẻ hoạt động',
-              ),
             ],
           ),
 
+          // 2. CAPTION (Tự nhiên như bài đăng bạn bè, không đóng khung hộp dashboard)
+          if (currentCaption.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              currentCaption,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.text,
+                height: 1.45,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
+
           const SizedBox(height: 12),
 
-          // 2. ACTIVITY TITLE & VENUE (Tiêu đề buổi chơi & Địa điểm sân cầu)
+          // 3. TIÊU ĐỀ BUỔI CHƠI & ĐỊA ĐIỂM SÂN (Chỉ nhắc 1 lần rõ ràng)
           Text(
             post.title,
             style: const TextStyle(
-              fontSize: 18,
+              fontSize: 16,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.2,
               color: AppColors.text,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Row(
             children: [
               const Icon(
                 Icons.location_on,
-                size: 14,
+                size: 13,
                 color: AppColors.primary,
               ),
               const SizedBox(width: 4),
@@ -217,188 +294,77 @@ class ActivityCard extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
 
-          // 3. STRAVA-STYLE ATHLETIC COURT GRAPHIC (Visual Map của buổi cầu lông)
-          BadmintonCourtGraphic(post: post, height: 135),
+          // 4. HÌNH SÂN / TỔNG KẾT TRẬN (Graphic thể thao trung tâm duy nhất)
+          BadmintonCourtGraphic(post: post, height: 130),
 
-          // 4. CAPTION / ATHLETE THOUGHT (Cảm nhận buổi chơi)
-          if (currentCaption.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Container(
-                      width: 3.5,
-                      decoration: const BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.horizontal(
-                          left: Radius.circular(9),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        child: Text(
-                          currentCaption,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.text,
-                            height: 1.4,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+          const SizedBox(height: 10),
 
-          const SizedBox(height: 12),
-
-          // 5. STRAVA-STYLE ATHLETIC STATS DASHBOARD (Bảng chỉ số buổi chơi)
+          // 5. TRẠNG THÁI XÁC NHẬN (Giải thích rõ ràng bằng tiếng Việt, tránh hiểu nhầm)
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: AppColors.background,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(color: AppColors.border),
             ),
             child: Row(
               children: [
-                // Cột 1: Chiến tích Thắng / Thua hoặc Trận chốt
+                Icon(
+                  stats.pending > 0
+                      ? Icons.hourglass_top_rounded
+                      : (stats.disputed > 0
+                          ? Icons.warning_amber_rounded
+                          : Icons.check_circle_outline),
+                  size: 16,
+                  color: stats.pending > 0
+                      ? AppColors.streak
+                      : (stats.disputed > 0
+                          ? AppColors.loss
+                          : AppColors.primary),
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         isPersonal
-                            ? '${stats.wins ?? 0}W - ${stats.losses ?? 0}L'
-                            : '${stats.confirmed} chốt',
-                        style: AppTokens.metric.copyWith(
-                          fontSize: 20,
-                          color: (stats.wins ?? 0) >= (stats.losses ?? 0)
-                              ? AppColors.primary
-                              : AppColors.text,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        isPersonal ? 'Thành tích xác nhận' : 'Trận đã chốt',
+                            ? '$wins thắng · $losses thua đã xác nhận'
+                            : '${stats.confirmed}/${stats.total} trận đã xác nhận',
                         style: const TextStyle(
-                          fontSize: 10,
-                          color: AppColors.muted,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 1,
-                  height: 32,
-                  color: AppColors.border,
-                  margin: const EdgeInsets.symmetric(horizontal: 10),
-                ),
-                // Cột 2: Tổng số trận trong buổi
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${stats.total}',
-                        style: AppTokens.metric.copyWith(
-                          fontSize: 20,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
                           color: AppColors.text,
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      const Text(
-                        'Tổng số trận',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: AppColors.muted,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 1,
-                  height: 32,
-                  color: AppColors.border,
-                  margin: const EdgeInsets.symmetric(horizontal: 10),
-                ),
-                // Cột 3: Trạng thái chốt / chờ xác nhận
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            stats.pending > 0
-                                ? Icons.hourglass_top_rounded
-                                : (stats.disputed > 0
-                                    ? Icons.warning_amber_rounded
-                                    : Icons.check_circle_outline),
-                            size: 15,
-                            color: stats.pending > 0
-                                ? AppColors.streak
-                                : (stats.disputed > 0
-                                    ? AppColors.loss
-                                    : AppColors.primary),
+                      if (stats.pending > 0)
+                        Text(
+                          'Còn ${stats.pending} trận chờ đối thủ hoặc host chốt',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.streak,
+                            fontWeight: FontWeight.w500,
                           ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              stats.pending > 0
-                                  ? 'Chờ ${stats.pending}'
-                                  : (stats.disputed > 0
-                                      ? 'Tranh chấp'
-                                      : 'Đã chốt'),
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: stats.pending > 0
-                                    ? AppColors.streak
-                                    : (stats.disputed > 0
-                                        ? AppColors.loss
-                                        : AppColors.primary),
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                        )
+                      else if (stats.disputed > 0)
+                        const Text(
+                          'Có trận đang trong trạng thái tranh chấp tỷ số',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.loss,
+                            fontWeight: FontWeight.w500,
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        stats.confirmed == stats.total
-                            ? '100% hoàn tất'
-                            : '${stats.confirmed}/${stats.total} trận chốt',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: AppColors.muted,
+                        )
+                      else
+                        const Text(
+                          'Toàn bộ kết quả trong buổi đã được chốt',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.muted,
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
                     ],
                   ),
                 ),
@@ -406,9 +372,9 @@ class ActivityCard extends StatelessWidget {
             ),
           ),
 
-          // Badges cảnh báo / Cập nhật kết quả
+          // Badges cập nhật kết quả muộn hoặc hủy
           if (post.resultsUpdated) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
@@ -444,15 +410,9 @@ class ActivityCard extends StatelessWidget {
             ),
           ],
 
-          const SizedBox(height: 8),
-          const Text(
-            'Elo: chưa tính · Không chia sẻ điểm danh hoặc lý do tranh chấp',
-            style: TextStyle(fontSize: 10, color: AppColors.muted),
-          ),
-
-          // 6. SOCIAL ACTIONS BAR (Kudos, Chi tiết & Tùy chọn)
+          // 6. SOCIAL REACTIONS BAR (Kudos, Chi tiết, Chia sẻ)
           if (actions.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             const Divider(color: AppColors.border, height: 1),
             const SizedBox(height: 6),
             Wrap(
