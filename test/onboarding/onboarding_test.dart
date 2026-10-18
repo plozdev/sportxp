@@ -338,7 +338,8 @@ void main() {
           ),
         ),
       );
-      expect(find.text('MAIN APP'), findsOneWidget);
+      expect(find.text('MAIN APP'), findsNothing);
+      expect(find.text('Chào mừng trở lại.'), findsOneWidget);
       await tester.runAsync(
         () => client.auth.signInWithPassword(
           email: 'me@example.com',

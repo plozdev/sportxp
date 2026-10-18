@@ -1,11 +1,12 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:sport_xp_4/core/theme/app_theme.dart';
-import 'package:sport_xp_4/features/auth/presentation/auth_sheet.dart';
+import 'package:sport_xp_4/features/auth/presentation/auth_page.dart';
 
 void main() {
   testWidgets('Signup without session asks for email confirmation', (
@@ -43,7 +44,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.dark,
-        home: Scaffold(body: AuthSheet(client: client)),
+        home: AuthPage(client: client),
       ),
     );
     await tester.tap(find.text('Chưa có tài khoản? Đăng ký'));
@@ -94,7 +95,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.dark,
-        home: Scaffold(body: AuthSheet(client: client)),
+        home: AuthPage(client: client),
       ),
     );
     await tester.enterText(

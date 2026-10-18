@@ -13,9 +13,13 @@ class PlayerProfile {
     this.homeCourtName,
     this.createdAt,
     this.onboardingStep = 0,
+    this.publicId,
+    this.socialVisibility = 'public',
   }) : backendTierName = tierName;
 
   final String id, displayName;
+  final String? publicId;
+  final String socialVisibility;
 
   /// Kept for diagnostics while the SQL label migration is being applied.
   final String backendTierName;
@@ -37,6 +41,8 @@ class PlayerProfile {
     }
     return PlayerProfile(
       id: json['id'] as String,
+      publicId: json['public_id'] as String?,
+      socialVisibility: json['social_visibility'] as String? ?? 'public',
       displayName: json['display_name'] as String? ?? 'Vận động viên',
       avatarUrl: json['avatar_url'] as String?,
       eloRating: (json['elo_rating'] as num?)?.toInt(),
@@ -96,4 +102,10 @@ class PlayerProfile {
     if (trustScore >= 60) return 'Cần cải thiện';
     return 'Cảnh báo bùng kèo';
   }
+
+  /// Đã hoàn tất 5 trận phân hạng ban đầu hay chưa
+  bool get isCalibrated => winStreak >= 5;
+
+  /// Số trận phân hạng đã hoàn tất (0..5)
+  int get placementMatchesCompleted => winStreak.clamp(0, 5);
 }

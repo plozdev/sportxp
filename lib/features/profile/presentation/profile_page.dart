@@ -7,13 +7,16 @@ import '../data/profile_repository.dart';
 import '../domain/player_profile.dart';
 import 'widgets/edit_profile_sheet.dart';
 import 'widgets/passport_sheet.dart';
+import '../../social/data/social_repository.dart';
+import '../../social/presentation/connections_page.dart';
+import '../../social/presentation/scan_profile_page.dart';
+import '../../auth/presentation/auth_page.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({
     super.key,
     required this.profile,
     required this.isSignedIn,
-    required this.onSignIn,
     required this.onSignOut,
     required this.onRefresh,
     this.repository,
@@ -21,7 +24,7 @@ class ProfilePage extends StatelessWidget {
 
   final Future<PlayerProfile?> profile;
   final bool isSignedIn;
-  final VoidCallback onSignIn, onSignOut, onRefresh;
+  final VoidCallback onSignOut, onRefresh;
   final ProfileRepository? repository;
 
   void _openPassport(BuildContext context, PlayerProfile player) {
@@ -33,7 +36,10 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Future<void> _openEditProfile(BuildContext context, PlayerProfile player) async {
+  Future<void> _openEditProfile(
+    BuildContext context,
+    PlayerProfile player,
+  ) async {
     if (repository == null) return;
     final updated = await showModalBottomSheet<bool>(
       context: context,
@@ -42,10 +48,8 @@ class ProfilePage extends StatelessWidget {
       builder: (_) => EditProfileSheet(
         profile: player,
         loadCourts: repository!.loadCourts,
-        onSave: (name, courtId) => repository!.updateProfile(
-          displayName: name,
-          homeCourtId: courtId,
-        ),
+        onSave: (name, courtId) =>
+            repository!.updateProfile(displayName: name, homeCourtId: courtId),
       ),
     );
     if (updated == true) onRefresh();
@@ -54,11 +58,7 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!isSignedIn) {
-      return PageContent(
-        children: [
-          _buildSignedOutHero(context),
-        ],
-      );
+      return AuthPage(client: repository?.client);
     }
 
     return AsyncPanel<PlayerProfile?>(
@@ -74,11 +74,14 @@ class ProfilePage extends StatelessWidget {
                   children: [
                     Text(
                       'Hồ sơ chưa khả dụng',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     SizedBox(height: 8),
                     Text(
-                      'Chưa tìm thấy hồ sơ cho tài khoản này. Vui lòng thử cập nhật lại hoặc kiểm tra kết nối mạng.',
+                      'Bạn đã đăng nhập nhưng chưa tải được hồ sơ. Hãy thử tải lại hoặc đăng xuất để đăng nhập lại.',
                       style: TextStyle(color: AppColors.muted),
                     ),
                   ],
@@ -89,33 +92,94 @@ class ProfilePage extends StatelessWidget {
                 icon: const Icon(Icons.refresh),
                 label: const Text('TẢI LẠI HỒ SƠ'),
               ),
-              OutlinedButton(onPressed: onSignOut, child: const Text('ĐĂNG XUẤT')),
+              OutlinedButton(
+                onPressed: onSignOut,
+                child: const Text('ĐĂNG XUẤT'),
+              ),
             ],
           );
         }
 
         return PageContent(
           children: [
-            // 1. ATHLETE IDENTITY HEADER (Strava inspired)
+            // 1. ATHLETE IDENTITY HEADER (Tích hợp ELO & Trạng thái phân hạng / Tiến trình thăng hạng)
             _AthleteHeaderCard(
               player: player,
               onViewPassport: () => _openPassport(context, player),
-              onEdit: repository != null ? () => _openEditProfile(context, player) : null,
+              onEdit: repository != null
+                  ? () => _openEditProfile(context, player)
+                  : null,
             ),
 
-            // 2. PLACEMENT MATCHES TRACKER (5 trận định hạng & K-Factor)
-            _PlacementTrackerCard(player: player),
+            // 2. CHỈ SỐ PHONG ĐỘ & UY TÍN (Chuỗi thắng & Điểm uy tín gộp trong 1 Bento Card)
+            _PerformanceMetricsCard(player: player),
 
-            // 3. CORE ELO & TIER CARD
-            _EloProgressCard(player: player),
+            // 3. KẾT NỐI & QUYỀN RIÊNG TƯ
+            if (repository != null && player.publicId != null)
+              BentoCard(
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.people_outline),
+                      title: const Text('Bạn bè và lời mời'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => ConnectionsPage(
+                            repository: SocialRepository(repository!.client),
+                            onOpen: (id) async {
+                              await Navigator.of(context).pushNamed('/p/$id');
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.qr_code_scanner),
+                      title: const Text('Quét mã / Mở link hồ sơ'),
+                      onTap: () async {
+                        final id = await Navigator.of(context).push<String>(
+                          MaterialPageRoute(
+                            builder: (_) => const ScanProfilePage(),
+                          ),
+                        );
+                        if (id != null && context.mounted) {
+                          await Navigator.of(context).pushNamed('/p/$id');
+                        }
+                      },
+                    ),
+                    SwitchListTile(
+                      title: const Text('Hồ sơ chỉ dành cho bạn bè'),
+                      subtitle: const Text(
+                        'Người lạ chỉ thấy thông tin kết nối tối thiểu.',
+                      ),
+                      value: player.socialVisibility == 'friends',
+                      onChanged: (value) async {
+                        try {
+                          await SocialRepository(repository!.client)
+                              .visibility(value ? 'friends' : 'public');
+                          onRefresh();
+                        } catch (_) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Chưa thể cập nhật quyền riêng tư.',
+                                ),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
 
-            // 4. ATHLETIC METRICS (Streak, Trust Score, Home Court)
-            _AthleticMetricsBento(player: player),
-
-            // 5. HARDWARE & HEALTH CONNECT (HealthKit / Health Connect)
+            // 4. HARDWARE & HEALTH CONNECT (HealthKit / Health Connect)
             const _HealthSyncCard(),
 
-            // 6. ACTION BUTTONS
+            // 5. ACTION BUTTONS
             const SizedBox(height: 8),
             Row(
               children: [
@@ -145,64 +209,10 @@ class ProfilePage extends StatelessWidget {
       },
     );
   }
-
-  Widget _buildSignedOutHero(BuildContext context) {
-    return BentoCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.sports_tennis, color: AppColors.primary, size: 24),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'HỘ CHIẾU THỂ THAO SỐ',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    Text(
-                      'SPORTXP PROFILE',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Mọi set cầu đều được định danh và ghi nhận. Đăng nhập để kích hoạt hệ số Elo, tích lũy điểm uy tín và nhận thẻ Hộ chiếu thể thao cá nhân.',
-            style: TextStyle(color: AppColors.muted, height: 1.5),
-          ),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: onSignIn,
-            icon: const Icon(Icons.login),
-            label: const Text('ĐĂNG NHẬP HOẶC TẠO TÀI KHOẢN'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // ---------------------------------------------------------------------------
-// 1. ATHLETE IDENTITY HEADER
+// 1. ATHLETE IDENTITY HEADER (Tích hợp ELO & Trạng thái phân hạng / Tiến trình)
 // ---------------------------------------------------------------------------
 class _AthleteHeaderCard extends StatelessWidget {
   const _AthleteHeaderCard({
@@ -217,20 +227,25 @@ class _AthleteHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCalibrated = player.isCalibrated;
+    final completed = player.placementMatchesCompleted;
+    final nextInfo = player.nextTierProgress;
+
     return BentoCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Row danh tính vận động viên (Avatar, Tên, Ngày gia nhập, Sân nhà, Sửa)
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Circular Athlete Avatar
+              // Avatar tròn viền nổi bật
               Stack(
                 alignment: Alignment.bottomRight,
                 children: [
                   Container(
-                    width: 76,
-                    height: 76,
+                    width: 72,
+                    height: 72,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: AppColors.background,
@@ -247,7 +262,7 @@ class _AthleteHeaderCard extends StatelessWidget {
                             child: Text(
                               player.initials,
                               style: const TextStyle(
-                                fontSize: 26,
+                                fontSize: 24,
                                 fontWeight: FontWeight.w900,
                                 color: AppColors.text,
                               ),
@@ -256,21 +271,21 @@ class _AthleteHeaderCard extends StatelessWidget {
                         : null,
                   ),
                   Container(
-                    padding: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.all(3),
                     decoration: const BoxDecoration(
                       color: AppColors.surface,
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
                       Icons.verified,
-                      size: 18,
+                      size: 16,
                       color: AppColors.primary,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(width: 16),
-              // Name & Metadata
+              const SizedBox(width: 14),
+              // Tên & Ngày tham gia & Sân nhà
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -286,85 +301,292 @@ class _AthleteHeaderCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    // Tier Pill
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-                      ),
-                      child: Text(
-                        player.tierName,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
                     Row(
                       children: [
-                        const Icon(Icons.calendar_today_outlined, size: 12, color: AppColors.muted),
+                        const Icon(
+                          Icons.calendar_today_outlined,
+                          size: 12,
+                          color: AppColors.muted,
+                        ),
                         const SizedBox(width: 4),
                         Text(
-                          player.memberSinceFormatted,
-                          style: const TextStyle(fontSize: 11, color: AppColors.muted),
+                          'Tham gia ${player.memberSinceFormatted}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.muted,
+                          ),
                         ),
                       ],
                     ),
+                    if (player.homeCourtName != null) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on,
+                            size: 13,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              player.homeCourtName!,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.text,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
               if (onEdit != null)
                 IconButton(
                   onPressed: onEdit,
-                  icon: const Icon(Icons.edit_outlined, size: 20, color: AppColors.muted),
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                    size: 20,
+                    color: AppColors.muted,
+                  ),
                   tooltip: 'Chỉnh sửa hồ sơ',
                 ),
             ],
           ),
           const SizedBox(height: 16),
-          // Home Court Banner
+
+          // Khung tích hợp ELO & Trạng thái phân hạng / Tiến trình
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: AppColors.background,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(color: AppColors.border),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.location_on, size: 16, color: AppColors.primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    player.homeCourtName != null
-                        ? 'Sân nhà: ${player.homeCourtName}'
-                        : 'Chưa gắn sân nhà • Bấm chỉnh sửa để chọn sân quen',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: player.homeCourtName != null ? FontWeight.w600 : FontWeight.normal,
-                      color: player.homeCourtName != null ? AppColors.text : AppColors.muted,
+                // Hàng 1: Điểm số ELO & Huy hiệu cấp bậc hoặc Đang phân hạng
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'CHỈ SỐ ELO',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.0,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text(
+                              player.eloRating?.toString() ?? '—',
+                              style: AppTokens.metric.copyWith(
+                                fontSize: 34,
+                                color: isCalibrated
+                                    ? AppColors.primary
+                                    : AppColors.streak,
+                                height: 1.0,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              isCalibrated ? 'Điểm kỹ năng' : 'Điểm tạm tính',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                    // Huy hiệu cấp bậc hoặc trạng thái phân hạng
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            (isCalibrated ? AppColors.primary : AppColors.streak)
+                                .withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: (isCalibrated
+                                  ? AppColors.primary
+                                  : AppColors.streak)
+                              .withValues(alpha: 0.35),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isCalibrated
+                                ? Icons.workspace_premium
+                                : Icons.hourglass_top_rounded,
+                            size: 18,
+                            color: isCalibrated
+                                ? AppColors.primary
+                                : AppColors.streak,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            isCalibrated ? player.tierName : 'Đang phân hạng',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: isCalibrated
+                                  ? AppColors.primary
+                                  : AppColors.streak,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 16),
+
+                // Hàng 2: Logic điều kiện
+                // Nếu ĐANG PHÂN HẠNG: Hiện tiến độ 5 trận phân hạng, KHÔNG hiện thanh progress mục tiêu
+                // Nếu ĐÃ QUA PHÂN HẠNG: Hiện mục tiêu thăng hạng & thanh progress
+                if (!isCalibrated) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Tiến độ phân hạng',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.streak.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '$completed/5 trận',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.streak,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // 5 vạch tiến độ phân hạng
+                  Row(
+                    children: List.generate(5, (index) {
+                      final isDone = index < completed;
+                      return Expanded(
+                        child: Container(
+                          height: 6,
+                          margin: EdgeInsets.only(right: index < 4 ? 6 : 0),
+                          decoration: BoxDecoration(
+                            color: isDone ? AppColors.streak : AppColors.surface,
+                            borderRadius: BorderRadius.circular(3),
+                            border: Border.all(
+                              color: isDone
+                                  ? AppColors.streak
+                                  : AppColors.border,
+                              width: 1,
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    completed == 0
+                        ? 'Đấu 5 trận đầu để hệ thống xác định thứ hạng và điểm Elo chuẩn xác hơn.'
+                        : 'Còn ${5 - completed} trận nữa để hoàn tất phân hạng và mở khóa mục tiêu thăng hạng.',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.muted,
+                      height: 1.3,
+                    ),
+                  ),
+                ] else ...[
+                  // Thanh tiến trình lên hạng tiếp theo khi đã hoàn tất phân hạng
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Mục tiêu: ${nextInfo.nextTier}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        nextInfo.pointsNeeded > 0
+                            ? 'Còn +${nextInfo.pointsNeeded} Elo'
+                            : 'Hạng cao nhất',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: nextInfo.pointsNeeded > 0
+                              ? AppColors.primary
+                              : AppColors.streak,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: nextInfo.progress,
+                      backgroundColor: AppColors.surface,
+                      color: AppColors.primary,
+                      minHeight: 6,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          // Primary Action: View 9:16 Digital Passport
+          const SizedBox(height: 14),
+
+          // Nút xem Hộ chiếu QR
           FilledButton.icon(
             onPressed: onViewPassport,
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.surface,
               foregroundColor: AppColors.text,
-              side: const BorderSide(color: AppColors.primary),
+              side: const BorderSide(color: AppColors.border),
             ),
-            icon: const Icon(Icons.badge_outlined, color: AppColors.primary, size: 18),
-            label: const Text('XEM HỘ CHIẾU CẦU LÔNG (9:16 SHARE)'),
+            icon: const Icon(
+              Icons.qr_code_2,
+              color: AppColors.primary,
+              size: 20,
+            ),
+            label: const Text('MÃ QR HỘ CHIẾU THỂ THAO'),
           ),
         ],
       ),
@@ -373,274 +595,115 @@ class _AthleteHeaderCard extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// 2. PLACEMENT TRACKER CARD (5 trận định hạng)
+// 2. CHỈ SỐ PHONG ĐỘ & UY TÍN (Chuỗi thắng & Điểm uy tín gộp trong 1 Bento Card)
 // ---------------------------------------------------------------------------
-class _PlacementTrackerCard extends StatelessWidget {
-  const _PlacementTrackerCard({required this.player});
+class _PerformanceMetricsCard extends StatelessWidget {
+  const _PerformanceMetricsCard({required this.player});
   final PlayerProfile player;
 
   @override
   Widget build(BuildContext context) {
-    // 5 trận định hạng: nếu onboarding hoàn tất và chưa qua 5 trận
-    final isCalibrated = player.winStreak > 5; // hoặc đã hoàn thành giai đoạn placement
-    const totalPlacement = 5;
-    final completed = (player.winStreak).clamp(0, totalPlacement);
-
     return BentoCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Row(
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            // Cột 1: Chuỗi thắng
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.radar, size: 16, color: AppColors.primary),
-                  SizedBox(width: 8),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.local_fire_department,
+                        size: 18,
+                        color: AppColors.streak,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'CHUỖI THẮNG',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.8,
+                          color: AppColors.streak.withValues(alpha: 0.9),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
                   Text(
-                    'ĐỊNH HẠNG BAN ĐẦU',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.0,
-                      color: AppColors.muted,
+                    '${player.winStreak}',
+                    style: AppTokens.metric.copyWith(
+                      fontSize: 28,
+                      color: AppColors.text,
                     ),
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    'Set thắng liên tục',
+                    style: TextStyle(fontSize: 11, color: AppColors.muted),
                   ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: isCalibrated ? AppColors.primary.withValues(alpha: 0.15) : AppColors.streak.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  isCalibrated ? 'ĐÃ XÁC THỰC' : 'TẠM TÍNH ($completed/5 TRẬN)',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: isCalibrated ? AppColors.primary : AppColors.streak,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // 5 indicator dots
-          Row(
-            children: List.generate(totalPlacement, (index) {
-              final isDone = index < completed || isCalibrated;
-              return Expanded(
-                child: Container(
-                  height: 6,
-                  margin: EdgeInsets.only(right: index < totalPlacement - 1 ? 6 : 0),
-                  decoration: BoxDecoration(
-                    color: isDone ? AppColors.primary : AppColors.border,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-              );
-            }),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'Hệ số K = 64 được kích hoạt trong 5 trận đầu tiên giúp điểm số tăng/giảm nhanh, nhanh chóng tiệm cận thực lực thật và triệt tiêu Smurf.',
-            style: TextStyle(fontSize: 11, color: AppColors.muted, height: 1.4),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// 3. ELO & TIER CARD
-// ---------------------------------------------------------------------------
-class _EloProgressCard extends StatelessWidget {
-  const _EloProgressCard({required this.player});
-  final PlayerProfile player;
-
-  @override
-  Widget build(BuildContext context) {
-    final nextInfo = player.nextTierProgress;
-
-    return BentoCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              const Text(
-                'CHỈ SỐ ELO',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.0,
-                  color: AppColors.muted,
-                ),
-              ),
-              Text(
-                'Hạng: ${player.tierName}',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.text),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                player.eloRating?.toString() ?? '—',
-                style: AppTokens.metric.copyWith(fontSize: 40, color: AppColors.primary),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'Điểm\nKỹ năng',
-                style: TextStyle(fontSize: 11, color: AppColors.muted, height: 1.2),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // Progress to next tier
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Mục tiêu: ${nextInfo.nextTier}',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              ),
-              Text(
-                nextInfo.pointsNeeded > 0 ? 'Còn +${nextInfo.pointsNeeded} Elo' : 'Hạng cao nhất',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: nextInfo.pointsNeeded > 0 ? AppColors.primary : AppColors.streak,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: nextInfo.progress,
-              backgroundColor: AppColors.background,
-              color: AppColors.primary,
-              minHeight: 6,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// 4. ATHLETIC METRICS (Streak & Trust Score)
-// ---------------------------------------------------------------------------
-class _AthleticMetricsBento extends StatelessWidget {
-  const _AthleticMetricsBento({required this.player});
-  final PlayerProfile player;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        // Win Streak Card
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppTokens.radius),
-              border: Border.all(color: AppColors.border),
+            // Đường kẻ ngăn cách dọc
+            Container(
+              width: 1,
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              color: AppColors.border,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.local_fire_department, size: 18, color: AppColors.streak),
-                    const SizedBox(width: 6),
-                    Text(
-                      'CHUỖI THẮNG',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.8,
-                        color: AppColors.streak.withValues(alpha: 0.9),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  '${player.winStreak}',
-                  style: AppTokens.metric.copyWith(fontSize: 26, color: AppColors.text),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Set thắng liên tục',
-                  style: TextStyle(fontSize: 11, color: AppColors.muted),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        // Trust Score Card
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppTokens.radius),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.shield_outlined, size: 18, color: AppColors.primary),
-                    SizedBox(width: 6),
-                    Text(
-                      'ĐIỂM UY TÍN',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.8,
+            // Cột 2: Điểm uy tín
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(
+                        Icons.shield_outlined,
+                        size: 18,
                         color: AppColors.primary,
                       ),
+                      SizedBox(width: 6),
+                      Text(
+                        'ĐIỂM UY TÍN',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.8,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${player.trustScore}',
+                    style: AppTokens.metric.copyWith(
+                      fontSize: 28,
+                      color: AppColors.text,
                     ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  '${player.trustScore}',
-                  style: AppTokens.metric.copyWith(fontSize: 26, color: AppColors.text),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  player.trustStatusText,
-                  style: const TextStyle(fontSize: 11, color: AppColors.muted),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    player.trustStatusText,
+                    style: const TextStyle(fontSize: 11, color: AppColors.muted),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
 
 // ---------------------------------------------------------------------------
-// 5. HARDWARE & HEALTH CONNECT (Strava Health Sync Card)
+// 3. HARDWARE & HEALTH CONNECT (Strava Health Sync Card)
 // ---------------------------------------------------------------------------
 class _HealthSyncCard extends StatelessWidget {
   const _HealthSyncCard();
@@ -656,7 +719,11 @@ class _HealthSyncCard extends StatelessWidget {
               color: Colors.red.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.favorite, color: Colors.redAccent, size: 22),
+            child: const Icon(
+              Icons.favorite,
+              color: Colors.redAccent,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 14),
           const Expanded(
@@ -683,7 +750,11 @@ class _HealthSyncCard extends StatelessWidget {
             ),
             child: const Text(
               'GIAI ĐOẠN 2',
-              style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.muted),
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+                color: AppColors.muted,
+              ),
             ),
           ),
         ],

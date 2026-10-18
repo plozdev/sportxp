@@ -9,9 +9,9 @@ class ProfileRepository {
   final SupabaseClient client;
 
   static const columnsWithCourt =
-      'id, display_name, avatar_url, elo_rating, tier_name, trust_score, win_streak, home_court_id, created_at, onboarding_step, courts(id, name, distance_km)';
+      'id, public_id, social_visibility, display_name, avatar_url, elo_rating, tier_name, trust_score, win_streak, home_court_id, created_at, onboarding_step, courts(id, name, distance_km)';
   static const basicColumns =
-      'id, display_name, avatar_url, elo_rating, tier_name, trust_score, win_streak, home_court_id, created_at, onboarding_step';
+      'id, public_id, social_visibility, display_name, avatar_url, elo_rating, tier_name, trust_score, win_streak, home_court_id, created_at, onboarding_step';
   static const leaderboardColumns =
       'id, display_name, avatar_url, elo_rating, tier_name, trust_score, win_streak';
 
@@ -25,11 +25,15 @@ class ProfileRepository {
           .eq('id', id)
           .maybeSingle();
       if (row != null) return PlayerProfile.fromJson(row);
-    } catch (_) {
+    } catch (error) {
       // Fallback nếu relation courts chưa grant SELECT hoặc tên alias khác
+      // A rolling deploy can still serve the MVP before the social migration.
+      final columns = error is PostgrestException && error.code == '42703'
+          ? basicColumns.replaceFirst('public_id, social_visibility, ', '')
+          : basicColumns;
       final fallbackRow = await client
           .from('profiles')
-          .select(basicColumns)
+          .select(columns)
           .eq('id', id)
           .maybeSingle();
       if (fallbackRow != null) return PlayerProfile.fromJson(fallbackRow);
@@ -49,10 +53,7 @@ class ProfileRepository {
     return rows.map(PlayerProfile.fromJson).toList(growable: false);
   }
 
-  Future<void> updateProfile({
-    String? displayName,
-    String? homeCourtId,
-  }) async {
+  Future<void> updateProfile({String? displayName, String? homeCourtId}) async {
     final id = client.auth.currentUser?.id;
     if (id == null) throw const AuthException('Vui lòng đăng nhập.');
     final updates = <String, dynamic>{};
@@ -100,9 +101,11 @@ class ProfileRepository {
               createdAt: DateTime.parse(row['created_at'] as String).toLocal(),
             ),
           )
-          .where((m) =>
-              m.teamA.toLowerCase().contains(playerName.toLowerCase()) ||
-              m.teamB.toLowerCase().contains(playerName.toLowerCase()))
+          .where(
+            (m) =>
+                m.teamA.toLowerCase().contains(playerName.toLowerCase()) ||
+                m.teamB.toLowerCase().contains(playerName.toLowerCase()),
+          )
           .take(5)
           .toList(growable: false);
       return list;

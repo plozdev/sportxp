@@ -23,6 +23,20 @@ flutter analyze
 flutter test
 ```
 
+Android Studio: open the project root, select the Flutter `main.dart` run
+configuration and an Android device/emulator. In **Run > Edit Configurations >
+Additional run args**, use:
+
+```text
+--dart-define-from-file=.env --dart-define=ROOMS_V2_ENABLED=true
+```
+
+The local `.idea/runConfigurations/main_dart.xml` is configured with these
+arguments (IDE files are gitignored). Stop and run again after changing defines;
+hot reload does not update them. Enable rooms v2 only against a database with
+the Phase 2A migration applied, as described below. `--no-wasm-dry-run` belongs
+to web builds and should not be included in an Android run configuration.
+
 Rebuild when changing `.env`. Do not bundle a service-role key. A public anon key
 is expected to be present in the compiled client; authorization belongs in RLS
 and server functions. JSON defines remain supported via config/supabase.example.json.
@@ -32,8 +46,10 @@ shows a dark setup state rather than demo records.
 ## Implemented
 
 - Password login/sign-up, confirmation-email state, session persistence, logout.
-  Mutating actions prompt login; preserving deep-link/action intent across both
-  login and onboarding is an explicit social-phase acceptance requirement.
+  Login/sign-up is a full screen required before any app screen or profile link.
+  The global auth gate removes all protected routes/sheets on logout or expiry;
+  onboarding runs once before mounting the app Navigator. Profile link targets
+  survive login/onboarding; opening a link never sends a friend request.
 - Home: newest 100 match_results ordered by created_at descending; record form
   calls record_match_and_update_elo with the exact supplied p_* signature.
 - Rooms: OPEN, future rooms joined with courts(name, distance_km); create via
@@ -48,6 +64,41 @@ shows a dark setup state rather than demo records.
 - Passport: authenticated profile fields, no demo metrics or badge.
 - Recording success refreshes feed/profile/leaderboard; failed refreshes do not
   re-run the RPC. Loading/error/empty states and retry controls are included.
+
+## Social profile setup
+
+Apply `supabase/migrations/20261018180000_social_phase1.sql` as the database owner
+after the onboarding and skill-tier migrations, first on staging. It adds stable
+profile IDs, friendships, blocks, private audit events, RPCs and restrictive
+profile policies. Review existing consumers: profile SELECT grants become an
+explicit whitelist, and private/blocked profiles are filtered at the server.
+
+QR, camera/link input, connection lists and friend actions require this migration.
+The existing profile can still load without it. Set `PROFILE_LINK_ORIGIN` to your
+HTTPS origin at build time for `https://<host>/#/p/<public_id>` web links; leave it
+empty for the `sportxp://profile/<public_id>` native scheme. Verified HTTPS native
+links still require domain association files and native signing configuration.
+
+The isolated SQL test uses `@electric-sql/pglite` installed outside the repository:
+`node supabase/tests/social_phase1_test.cjs <installation-directory>`.
+
+## Managed rooms (Phase 2A)
+
+The new room workflow is gated by `--dart-define=ROOMS_V2_ENABLED=true`. Apply
+`supabase/migrations/20261019000100_rooms_phase2a.sql` after Phase 1, on staging
+first, and deploy the enabled client together with the schema cutover. The flag
+defaults to false so the existing MVP can run before the new backend is ready.
+After cutover, direct room writes from old clients are rejected; create/join and
+all room transitions must use `room_command_v2`.
+
+Phase 2A adds public/private rooms, organizer/player host roles, start/end times,
+skill/fee/cancellation terms, transactional slots/calendar, FIFO eligible waiters,
+revision-bound reconfirmation, notices and private audit history. Finishing a
+room does not award Elo or attendance/trust. Legacy rooms remain read-only and
+are not silently imported into the new calendar with an invented end time.
+
+Tests: `node supabase/tests/rooms_phase2a_test.cjs <pglite-install-directory>` and
+`flutter test --dart-define=ROOMS_V2_ENABLED=true test/managed_rooms_test.dart`.
 
 ## Backend verification and remaining deployment prerequisite
 
@@ -78,7 +129,7 @@ so no automatic write retries are made.
 
 - lib/app: composition, navigation, auth lifecycle and refresh coordination.
 - lib/core: shared theme and Supabase configuration.
-- lib/features/auth: auth modal.
+- lib/features/auth: required login/sign-up screen and global session gate.
 - lib/features/feed: draft/summary, score validation, record form and feed.
 - lib/features/matchmaking: room/court models, forms and SupabaseMatchRepository.
 - lib/features/profile: profile query and passport.

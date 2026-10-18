@@ -4,12 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../shared/widgets/bento_card.dart';
+import '../../auth/presentation/auth_page.dart';
 import '../data/supabase_onboarding_repository.dart';
 import '../domain/onboarding_repository.dart';
 import '../domain/onboarding_state.dart';
 import 'onboarding_page.dart';
 
-/// Checks restored sessions as well as fresh sign-ins. Guests may browse.
+/// Checks onboarding after authentication; never exposes its child to guests.
 class OnboardingGate extends StatefulWidget {
   const OnboardingGate({
     super.key,
@@ -88,7 +89,7 @@ class _OnboardingGateState extends State<OnboardingGate> {
 
   @override
   Widget build(BuildContext context) {
-    if (_userId == null) return widget.child;
+    if (_userId == null) return AuthPage(client: widget.client);
     return FutureBuilder<OnboardingState>(
       future: _state,
       builder: (context, snapshot) {

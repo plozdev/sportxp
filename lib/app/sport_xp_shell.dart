@@ -1,7 +1,8 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../features/auth/presentation/auth_sheet.dart';
+
 import '../features/feed/domain/match_summary.dart';
 import '../features/feed/presentation/feed_page.dart';
 import '../features/feed/presentation/record_match_sheet.dart';
@@ -15,6 +16,9 @@ import '../features/profile/presentation/profile_page.dart';
 import '../features/rankings/presentation/leaderboard_page.dart';
 import '../core/theme/app_theme.dart';
 import '../shared/widgets/bento_card.dart';
+import '../features/rooms/data/managed_room_repository.dart';
+import '../features/rooms/presentation/managed_rooms_page.dart';
+import '../features/rooms/presentation/room_editor_page.dart';
 
 class SportXpShell extends StatefulWidget {
   const SportXpShell({super.key, this.client, this.matches, this.startupError});
@@ -32,8 +36,10 @@ class _SportXpShellState extends State<SportXpShell> {
   Future<List<PlayerProfile>>? _leaders;
   Future<PlayerProfile?> _profile = Future.value(null);
   String? _userId, _joiningRoom;
-  bool _authOpen = false, _signingOut = false;
+  bool _signingOut = false;
   int _index = 0;
+  int _roomRefresh = 0;
+  static const _roomsV2 = bool.fromEnvironment('ROOMS_V2_ENABLED');
 
   @override
   void initState() {
@@ -58,6 +64,8 @@ class _SportXpShellState extends State<SportXpShell> {
   }
 
   void _reload() {
+    if (widget.client?.auth.currentSession == null) return;
+    _roomRefresh++;
     final client = widget.client;
     if (client != null) {
       final profiles = ProfileRepository(client);
@@ -67,7 +75,7 @@ class _SportXpShellState extends State<SportXpShell> {
     final matches = widget.matches;
     if (matches != null) {
       _feed = _observe(matches.feed());
-      _rooms = _observe(matches.openRooms());
+      if (!_roomsV2) _rooms = _observe(matches.openRooms());
     }
   }
 
@@ -80,37 +88,33 @@ class _SportXpShellState extends State<SportXpShell> {
 
   void _refresh() => setState(_reload);
   void _message(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<bool> _ensureAuth() async {
-    if (widget.client?.auth.currentSession != null) return true;
-    if (_authOpen) return false;
-    final client = widget.client;
-    if (client == null) {
-      _message(widget.startupError ?? 'Chưa cấu hình kết nối Supabase.');
-      return false;
-    }
-    _authOpen = true;
-    try {
-      final success = await showModalBottomSheet<bool>(
-        context: context,
-        isScrollControlled: true,
-        useSafeArea: true,
-        isDismissible: false,
-        enableDrag: false,
-        builder: (_) => AuthSheet(client: client),
-      );
-      return mounted && success == true && client.auth.currentSession != null;
-    } finally {
-      _authOpen = false;
-    }
+    final session = widget.client?.auth.currentSession;
+    return session != null && !session.isExpired;
   }
 
   Future<void> _create() async {
     if (!await _ensureAuth() || !mounted) return;
+    if (_roomsV2 && widget.client != null) {
+      final success = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              RoomEditorPage(repository: ManagedRoomRepository(widget.client!)),
+        ),
+      );
+      if (mounted && success == true) {
+        setState(() {
+          _index = 1;
+          _reload();
+        });
+      }
+      return;
+    }
     final matches = widget.matches;
     if (matches == null) {
       _message(_schemaMessage);
@@ -215,13 +219,7 @@ class _SportXpShellState extends State<SportXpShell> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: const Text('SPORTXP'),
-      actions: [
-        if (_userId == null)
-          TextButton(onPressed: _ensureAuth, child: const Text('ĐĂNG NHẬP')),
-      ],
-    ),
+    appBar: AppBar(title: const Text('SPORTXP')),
     body: SafeArea(
       child: IndexedStack(
         index: _index,
@@ -233,7 +231,12 @@ class _SportXpShellState extends State<SportXpShell> {
                   onRecord: _record,
                   onRefresh: _refresh,
                 ),
-          _rooms == null
+          _roomsV2 && widget.client != null
+              ? ManagedRoomsPage(
+                  repository: ManagedRoomRepository(widget.client!),
+                  refreshToken: _roomRefresh,
+                )
+              : _rooms == null
               ? _pending()
               : MatchmakingPage(
                   rooms: _rooms!,
@@ -248,10 +251,11 @@ class _SportXpShellState extends State<SportXpShell> {
           ProfilePage(
             profile: _profile,
             isSignedIn: _userId != null,
-            onSignIn: _ensureAuth,
             onSignOut: _signOut,
             onRefresh: _refresh,
-            repository: widget.client != null ? ProfileRepository(widget.client!) : null,
+            repository: widget.client != null
+                ? ProfileRepository(widget.client!)
+                : null,
           ),
         ],
       ),
