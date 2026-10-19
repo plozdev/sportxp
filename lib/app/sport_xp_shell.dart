@@ -154,6 +154,7 @@ class _SportXpShellState extends State<SportXpShell> {
           ),
           for (final player in MockLeaderboardRepository(sandbox).players())
             ListTile(
+              key: ValueKey('account-${player.id}'),
               title: Text(player.displayName),
               subtitle: Text(
                 '${player.tierName} · ${player.eloRating} Elo${player.id == sandbox.userId ? ' · Tài khoản của tôi' : ''}',
@@ -489,7 +490,10 @@ class _SportXpShellState extends State<SportXpShell> {
                 },
                 borderRadius: BorderRadius.circular(20),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3.5,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(20),
@@ -510,7 +514,8 @@ class _SportXpShellState extends State<SportXpShell> {
                         ),
                         child: Center(
                           child: Text(
-                            (_sandbox!.people[_sandbox!.actorId] ?? _sandbox!.actorId)
+                            (_sandbox!.people[_sandbox!.actorId] ??
+                                    _sandbox!.actorId)
                                 .substring(0, 1)
                                 .toUpperCase(),
                             style: const TextStyle(
@@ -524,7 +529,8 @@ class _SportXpShellState extends State<SportXpShell> {
                       const SizedBox(width: 5),
                       Flexible(
                         child: Text(
-                          _sandbox!.people[_sandbox!.actorId] ?? _sandbox!.actorId,
+                          _sandbox!.people[_sandbox!.actorId] ??
+                              _sandbox!.actorId,
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,

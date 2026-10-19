@@ -2,7 +2,7 @@ name: SportXP Flutter CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dev ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   quality_and_tests:
-    name: Code Quality & Automated Tests
+    name: Analyze & Runtime Regression Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -41,10 +41,36 @@ jobs:
       - name: Analyze code
         run: flutter analyze
 
-      # Run every test; do not skip accessibility failures in headless CI.
-      - name: Run automated tests
+      # Validate behavior and runtime exceptions, not demo names or screenshot pixels.
+      - name: Run behavior and runtime regression tests
         run: flutter test
 
       # Reproduce runners where optional SDK font files are not installed.
       - name: Verify onboarding and passport with fallback fonts
         run: flutter test --dart-define=TEST_SDK_FONTS=false test/onboarding/onboarding_test.dart test/social_visual_test.dart
+
+  build:
+    name: Build Android & Web
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.7'
+          cache: true
+      - name: Install dependencies
+        run: flutter pub get
+      # Debug build validates Android plugins/resources without release signing secrets.
+      - name: Build Android APK
+        run: flutter build apk --debug
+      - name: Build web release
+        run: flutter build web --release --no-wasm-dry-run

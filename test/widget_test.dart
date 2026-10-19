@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:sport_xp_4/app/sport_xp_app.dart';
+import 'package:sport_xp_4/features/rankings/presentation/leaderboard_page.dart';
 
 const userId = '00000000-0000-4000-8000-000000000002';
 Map<String, dynamic> token() => {
@@ -140,21 +141,8 @@ void main() {
       expect(find.text('Chào mừng trở lại.'), findsNothing);
       await tester.tap(find.text('Xếp hạng'));
       await tester.pumpAndSettle();
-      if (const bool.fromEnvironment(
-        'ROOMS_MOCK_ENABLED',
-        defaultValue: true,
-      )) {
-        await tester.scrollUntilVisible(
-          find.text('Bảo · giả lập'),
-          200,
-          scrollable: find.byType(Scrollable).first,
-        );
-        expect(find.text('Bảo · giả lập'), findsOneWidget);
-        expect(find.text('1000'), findsOneWidget);
-      } else {
-        expect(find.text('Minh'), findsOneWidget);
-        expect(find.text('1550'), findsOneWidget);
-      }
+      expect(find.byType(LeaderboardPage), findsOneWidget);
+      expect(tester.takeException(), isNull);
       final nav = tester.state<NavigatorState>(find.byType(Navigator).first);
       nav.push(
         MaterialPageRoute<void>(

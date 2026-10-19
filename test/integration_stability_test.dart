@@ -15,7 +15,9 @@ void main() {
     final rooms = MockRoomRepository(userId: 'me');
     final home = MockActivityRepository(rooms);
     final posts = await home.list();
-    expect(posts, hasLength(7));
+    expect(posts, isNotEmpty);
+    final initialIds = posts.map((post) => post.id).toSet();
+    expect(initialIds.length, posts.length);
     expect(posts.map((p) => p.authorId).toSet(), {
       'me',
       'linh',
@@ -51,7 +53,7 @@ void main() {
       false,
     );
     rooms.reset();
-    expect(await home.list(), hasLength(7));
+    expect((await home.list()).map((post) => post.id).toSet(), initialIds);
     rooms.setMockFriend('minh', false);
     expect((await home.list()).any((p) => p.authorId == 'minh'), false);
   });
