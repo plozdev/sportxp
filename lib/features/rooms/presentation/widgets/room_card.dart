@@ -19,10 +19,10 @@ class RoomCard extends StatelessWidget {
   Widget _buildSlotBadge() {
     if (room.status == 'CANCELLED') {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: AppColors.loss.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
           border: Border.all(color: AppColors.loss.withValues(alpha: 0.4)),
         ),
         child: const Text(
@@ -30,7 +30,7 @@ class RoomCard extends StatelessWidget {
           style: TextStyle(
             color: AppColors.loss,
             fontWeight: FontWeight.w800,
-            fontSize: 12,
+            fontSize: 11,
             letterSpacing: 0.5,
           ),
         ),
@@ -39,23 +39,23 @@ class RoomCard extends StatelessWidget {
 
     if (room.status == 'IN_PROGRESS') {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: AppColors.primary.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
           border: Border.all(color: AppColors.primary),
         ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.sports_tennis, size: 14, color: AppColors.primary),
+            Icon(Icons.sports_tennis, size: 12, color: AppColors.primary),
             SizedBox(width: 4),
             Text(
-              'ĐANG DIỄN RA',
+              'ĐANG ĐẤU',
               style: TextStyle(
                 color: AppColors.primary,
                 fontWeight: FontWeight.w800,
-                fontSize: 12,
+                fontSize: 11,
                 letterSpacing: 0.5,
               ),
             ),
@@ -66,17 +66,17 @@ class RoomCard extends StatelessWidget {
 
     if (room.status == 'COMPLETED') {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: AppColors.border,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
         ),
         child: const Text(
           'ĐÃ KẾT THÚC',
           style: TextStyle(
             color: AppColors.muted,
             fontWeight: FontWeight.w700,
-            fontSize: 12,
+            fontSize: 11,
             letterSpacing: 0.5,
           ),
         ),
@@ -85,17 +85,17 @@ class RoomCard extends StatelessWidget {
 
     if (room.status == 'DRAFT') {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: AppColors.border,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
         ),
         child: const Text(
           'BẢN NHÁP',
           style: TextStyle(
             color: AppColors.muted,
             fontWeight: FontWeight.w700,
-            fontSize: 12,
+            fontSize: 11,
             letterSpacing: 0.5,
           ),
         ),
@@ -104,23 +104,23 @@ class RoomCard extends StatelessWidget {
 
     if (availableSlots > 0) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: AppColors.primary.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
           border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.people_alt_outlined, size: 14, color: AppColors.primary),
+            const Icon(Icons.people_alt_outlined, size: 12, color: AppColors.primary),
             const SizedBox(width: 4),
             Text(
-              'CÒN $availableSlots CHỖ',
+              'CÒN $availableSlots/${room.capacity} CHỖ',
               style: const TextStyle(
                 color: AppColors.primary,
                 fontWeight: FontWeight.w800,
-                fontSize: 12,
+                fontSize: 11,
                 letterSpacing: 0.5,
                 fontFeatures: [FontFeature.tabularFigures()],
               ),
@@ -131,18 +131,19 @@ class RoomCard extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: AppColors.border,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
       ),
-      child: const Text(
-        'ĐỦ NGƯỜI',
-        style: TextStyle(
+      child: Text(
+        'ĐỦ NGƯỜI (${room.capacity}/${room.capacity})',
+        style: const TextStyle(
           color: AppColors.muted,
           fontWeight: FontWeight.w700,
-          fontSize: 12,
+          fontSize: 11,
           letterSpacing: 0.5,
+          fontFeatures: [FontFeature.tabularFigures()],
         ),
       ),
     );
@@ -151,9 +152,9 @@ class RoomCard extends StatelessWidget {
   Widget _buildRegistrationBadge() {
     if (room.isHost) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
         decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.1),
+          color: AppColors.primary.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
         ),
@@ -161,8 +162,8 @@ class RoomCard extends StatelessWidget {
           'HOST',
           style: TextStyle(
             color: AppColors.primary,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
             letterSpacing: 0.5,
           ),
         ),
@@ -171,18 +172,18 @@ class RoomCard extends StatelessWidget {
 
     if (room.myStatus == 'REGISTERED') {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
         decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.1),
+          color: AppColors.primary.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
         ),
         child: const Text(
-          'ĐÃ THAM GIA',
+          'ĐÃ VÀO',
           style: TextStyle(
             color: AppColors.primary,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
           ),
         ),
       );
@@ -190,18 +191,18 @@ class RoomCard extends StatelessWidget {
 
     if (room.myStatus == 'WAITLIST') {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
         decoration: BoxDecoration(
           color: AppColors.streak.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: AppColors.streak.withValues(alpha: 0.6)),
         ),
         child: const Text(
-          'DANH SÁCH CHỜ',
+          'CHỜ CHỖ',
           style: TextStyle(
             color: AppColors.streak,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
           ),
         ),
       );
@@ -209,18 +210,18 @@ class RoomCard extends StatelessWidget {
 
     if (room.myStatus == 'RECONFIRM') {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
         decoration: BoxDecoration(
           color: AppColors.loss.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: AppColors.loss.withValues(alpha: 0.6)),
         ),
         child: const Text(
-          'CẦN XÁC NHẬN LẠI',
+          'CẦN XÁC NHẬN',
           style: TextStyle(
             color: AppColors.loss,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
           ),
         ),
       );
@@ -232,6 +233,7 @@ class RoomCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPrivate = room.visibility == 'PRIVATE';
+    final hasAction = room.myStatus == 'RECONFIRM' || room.status == 'IN_PROGRESS';
 
     return Container(
       width: double.infinity,
@@ -240,10 +242,11 @@ class RoomCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppTokens.radius),
         border: Border.all(
           color: room.myStatus == 'RECONFIRM'
-              ? AppColors.loss.withValues(alpha: 0.5)
+              ? AppColors.loss.withValues(alpha: 0.6)
               : room.status == 'IN_PROGRESS'
-              ? AppColors.primary.withValues(alpha: 0.4)
+              ? AppColors.primary.withValues(alpha: 0.5)
               : AppColors.border,
+          width: room.myStatus == 'RECONFIRM' || room.status == 'IN_PROGRESS' ? 1.5 : 1.0,
         ),
       ),
       child: Material(
@@ -253,363 +256,292 @@ class RoomCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppTokens.radius),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top Row: Slot Metric Badge & Status Tags
+                // SECTION 1: HEADER ROW (Mode, Room Code, Registration & Slot Badge)
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    _buildSlotBadge(),
-                    const SizedBox(width: 8),
-                    _buildRegistrationBadge(),
-                    const Spacer(),
-                    // Visibility tag
+                    // Mode & Code Badge
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: AppColors.border),
+                        color: isPrivate
+                            ? AppColors.streak.withValues(alpha: 0.12)
+                            : AppColors.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isPrivate
+                              ? AppColors.streak.withValues(alpha: 0.4)
+                              : AppColors.primary.withValues(alpha: 0.4),
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            isPrivate ? Icons.lock_outline : Icons.public,
-                            size: 13,
-                            color: AppColors.muted,
+                            isPrivate ? Icons.lock_rounded : Icons.public_rounded,
+                            size: 12,
+                            color: isPrivate ? AppColors.streak : AppColors.primary,
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            isPrivate ? 'Bạn bè' : 'Công khai',
+                            isPrivate ? 'PRIVATE' : 'PUBLIC',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: isPrivate ? AppColors.streak : AppColors.primary,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            room.roomCode,
                             style: const TextStyle(
                               fontSize: 11,
-                              color: AppColors.muted,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.text,
+                              fontFeatures: [FontFeature.tabularFigures()],
                             ),
                           ),
                         ],
                       ),
                     ),
+                    if (room.isHost || room.myStatus != null) ...[
+                      const SizedBox(width: 6),
+                      _buildRegistrationBadge(),
+                    ],
+                    const Spacer(),
+                    _buildSlotBadge(),
                   ],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
 
-                // Title
-                Text(
-                  room.title,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.text,
-                    height: 1.3,
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                // Venue & Court Label
+                // SECTION 2: MATCH TITLE & SCHEDULE
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Padding(
-                      padding: EdgeInsets.only(top: 2),
-                      child: Icon(
-                        Icons.sports_tennis,
-                        size: 15,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
                     Expanded(
-                      child: RichText(
-                        text: TextSpan(
-                          children: [
-                            TextSpan(
-                              text: room.courtName,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.text,
-                              ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            room.title,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.text,
+                              height: 1.25,
                             ),
-                            if (room.courtLabel.isNotEmpty) ...[
-                              const TextSpan(
-                                text: '  •  ',
-                                style: TextStyle(color: AppColors.muted),
-                              ),
-                              TextSpan(
-                                text: room.courtLabel,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                // Address
-                if (room.address.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.only(top: 2),
-                        child: Icon(
-                          Icons.location_on_outlined,
-                          size: 14,
-                          color: AppColors.muted,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          room.address,
-                          style: AppTokens.label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-
-                const SizedBox(height: 8),
-
-                // Time Range
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.schedule_outlined,
-                      size: 14,
-                      color: AppColors.muted,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        RoomUiFormatters.dateRange(room.startsAt, room.endsAt),
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.text,
-                          fontWeight: FontWeight.w500,
-                          fontFeatures: [FontFeature.tabularFigures()],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 14),
-
-                // Bento 3-Column Spec Box
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    children: [
-                      // Elo/Skill
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('TRÌNH ĐỘ', style: AppTokens.label),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${room.minElo}–${room.maxElo}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                                color: AppColors.text,
-                                fontFeatures: [FontFeature.tabularFigures()],
-                              ),
-                            ),
-                            Text(
-                              RoomUiFormatters.skillRange(room.minElo, room.maxElo),
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.muted,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(width: 1, height: 34, color: AppColors.border),
-                      // Fee
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 6),
+                          // Time
+                          Row(
                             children: [
-                              const Text('CHI PHÍ', style: AppTokens.label),
-                              const SizedBox(height: 2),
-                              Text(
-                                RoomUiFormatters.currency(room.fee),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13,
-                                  color: AppColors.text,
-                                  fontFeatures: [FontFeature.tabularFigures()],
-                                ),
+                              const Icon(
+                                Icons.schedule_rounded,
+                                size: 14,
+                                color: AppColors.primary,
                               ),
-                              const Text(
-                                '/người',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.muted,
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  RoomUiFormatters.dateRange(room.startsAt, room.endsAt),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.text,
+                                    fontWeight: FontWeight.w600,
+                                    fontFeatures: [FontFeature.tabularFigures()],
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                      ),
-                      Container(width: 1, height: 34, color: AppColors.border),
-                      // Host
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          const SizedBox(height: 4),
+                          // Venue
+                          Row(
                             children: [
-                              const Text('HOST', style: AppTokens.label),
-                              const SizedBox(height: 2),
-                              Text(
-                                room.hostName,
+                              const Icon(
+                                Icons.place_outlined,
+                                size: 14,
+                                color: AppColors.muted,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  room.courtLabel.isNotEmpty
+                                      ? '${room.courtName} • ${room.courtLabel}'
+                                      : room.courtName,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.muted,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 14,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // SECTION 3: KEY SPECS INLINE STRIP (Compact & Clean)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      // Rank
+                      Expanded(
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.military_tech_rounded,
+                              size: 14,
+                              color: AppColors.primary,
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                RoomUiFormatters.skillRange(room.minElo, room.maxElo),
                                 style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
                                   color: AppColors.text,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              Text(
-                                room.hostPlays ? 'Có chơi' : 'Tổ chức',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.muted,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(width: 1, height: 16, color: AppColors.border),
+                      // Fee
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.payments_outlined,
+                                size: 14,
+                                color: AppColors.streak,
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  RoomUiFormatters.currency(room.fee),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.text,
+                                    fontFeatures: [FontFeature.tabularFigures()],
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-
-                // Host booking confirmation notice if present
-                if (room.bookingStatus == 'HOST_CONFIRMED') ...[
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.check_circle_outline,
-                        size: 13,
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(width: 4),
-                      const Text(
-                        'Host đã khai báo đặt sân',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '• ${room.reserved}/${room.capacity} đã vào',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.muted,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-
-                const SizedBox(height: 14),
-
-                // Action Footer Button
-                SizedBox(
-                  width: double.infinity,
-                  height: AppTokens.touchTarget,
-                  child: room.myStatus == 'RECONFIRM'
-                      ? FilledButton.icon(
-                          onPressed: onTap,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.loss,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          icon: const Icon(Icons.warning_amber_rounded, size: 18),
-                          label: const Text(
-                            'CẦN XÁC NHẬN ĐIỀU KIỆN MỚI',
-                            style: TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                        )
-                      : room.status == 'IN_PROGRESS'
-                      ? FilledButton.icon(
-                          onPressed: onTap,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: AppColors.background,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          icon: const Icon(Icons.play_arrow_rounded, size: 20),
-                          label: const Text(
-                            'VÀO PHÒNG ĐẤU',
-                            style: TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                        )
-                      : OutlinedButton(
-                          onPressed: onTap,
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: AppColors.border),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                      Container(width: 1, height: 16, color: AppColors.border),
+                      // Host
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 6),
+                          child: Row(
                             children: [
-                              Text(
-                                'XEM CHI TIẾT',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13,
-                                  color: AppColors.text,
-                                ),
-                              ),
-                              SizedBox(width: 6),
-                              Icon(
-                                Icons.arrow_forward_ios,
-                                size: 12,
+                              const Icon(
+                                Icons.person_outline_rounded,
+                                size: 14,
                                 color: AppColors.muted,
                               ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  room.hostName,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.muted,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                             ],
                           ),
                         ),
+                      ),
+                    ],
+                  ),
                 ),
+
+                // SECTION 4: CONDITIONAL ACTION BUTTON (Only if action required)
+                if (hasAction) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 42,
+                    child: room.myStatus == 'RECONFIRM'
+                        ? FilledButton.icon(
+                            onPressed: onTap,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.loss,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            icon: const Icon(Icons.warning_amber_rounded, size: 16),
+                            label: const Text(
+                              'CẦN XÁC NHẬN ĐIỀU KIỆN MỚI',
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                            ),
+                          )
+                        : FilledButton.icon(
+                            onPressed: onTap,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: AppColors.background,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                            label: const Text(
+                              'VÀO PHÒNG ĐẤU',
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                            ),
+                          ),
+                  ),
+                ],
               ],
             ),
           ),

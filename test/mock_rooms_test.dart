@@ -25,28 +25,47 @@ void main() {
         'score': score,
         'winner': winner,
       };
-  test('Public discovery excludes private; friends-only private visibility is simulated', () async {
-    expect(
-      (await repo.list('discover')).map((r) => r.id),
-      isNot(contains('private-demo')),
-    );
-    expect(
-      (await repo.list('connections')).map((r) => r.id),
-      contains('private-demo'),
-    );
-    repo.selectActor('an');
-    final terms = (await repo.get('host-demo'))!.editableTerms;
-    repo.selectActor('me');
-    await send('edit', 'host-demo', {...terms, 'visibility': 'PRIVATE'});
-    repo.selectActor('bao');
-    expect(await repo.get('host-demo'), isNull);
-    repo.selectActor('linh');
-    expect(await repo.get('host-demo'), isNotNull);
-  });
+  test(
+    'Private is hidden even from friends; valid code admits strangers',
+    () async {
+      expect(
+        (await repo.list('discover')).map((r) => r.id),
+        isNot(contains('private-demo')),
+      );
+      expect(
+        (await repo.list('connections')).map((r) => r.id),
+        isNot(contains('private-demo')),
+      );
+      expect(await repo.get('private-demo'), isNull);
+      repo.selectActor('linh');
+      final code = (await repo.get('private-demo'))!.roomCode;
+      repo.selectActor('bao');
+      repo.setMockFriend('linh', false);
+      expect(await repo.get('private-demo'), isNull);
+      expect(await repo.get('XP-WRONG'), isNull);
+      expect(await repo.get('PRIV'), isNull);
+      expect(await repo.get(''), isNull);
+      expect((await repo.get(' ${code.toLowerCase()} '))!.id, 'private-demo');
+      await expectLater(
+        send('join', 'private-demo', {'expected_revision': 1}),
+        throwsException,
+      );
+      await send('join', 'private-demo', {
+        'expected_revision': 1,
+        'room_code': code,
+      });
+      expect((await repo.get('private-demo'))!.myStatus, 'REGISTERED');
+      expect(
+        (await repo.list('connections')).map((r) => r.id),
+        contains('private-demo'),
+      );
+    },
+  );
   test(
     'Create is idempotent; altered retry rejected; organizer consumes no slot',
     () async {
-      final p = (await repo.get('host-demo'))!.editableTerms;
+      final p = (await repo.get('host-demo'))!.editableTerms
+        ..remove('room_code');
       final command = RoomCommand(
         'create',
         payload: {...p, 'host_plays': false, 'draft': true},
@@ -305,7 +324,8 @@ void main() {
     );
   });
   test('Draft remains host-only and cancellation requires reason', () async {
-    final terms = (await repo.get('host-demo'))!.editableTerms;
+    final terms = (await repo.get('host-demo'))!.editableTerms
+      ..remove('room_code');
     final id = await repo.execute(
       RoomCommand('create', payload: {...terms, 'draft': true}),
     );
@@ -340,6 +360,26 @@ void main() {
       await send('leave', 'full-demo');
       repo.selectActor('me');
       expect((await repo.get('full-demo'))!.myStatus, 'CANCELLED');
+    },
+  );
+  test(
+    'Private waitlist promotion is based on code consent, not friendship',
+    () async {
+      repo.selectActor('minh');
+      final terms = (await repo.get('full-demo'))!.editableTerms;
+      await send('edit', 'full-demo', {...terms, 'visibility': 'PRIVATE'});
+      final code = (await repo.get('full-demo'))!.roomCode;
+      repo.selectActor('me');
+      await send('waitlist', 'full-demo', {
+        'expected_revision': 2,
+        'room_code': code,
+      });
+      repo.setMockFriend('minh', false);
+      expect((await repo.get('full-demo'))!.myStatus, 'WAITLIST');
+      repo.selectActor('linh');
+      await send('leave', 'full-demo');
+      repo.selectActor('me');
+      expect((await repo.get('full-demo'))!.myStatus, 'REGISTERED');
     },
   );
   testWidgets(

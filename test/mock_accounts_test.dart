@@ -58,7 +58,7 @@ void main() {
       expect(client.auth.currentUser!.id, userId);
       await tester.tap(find.text('Trang chủ'));
       await tester.pumpAndSettle();
-      expect(find.text('Nháp từ log (1)'), findsOneWidget);
+      expect(find.text('Hoạt động chờ chia sẻ (1)'), findsOneWidget);
       await tester.tap(find.text('Xếp hạng'));
       await tester.pumpAndSettle();
       expect(find.textContaining('BẢNG XẾP HẠNG GIẢ LẬP'), findsOneWidget);

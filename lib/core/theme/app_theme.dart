@@ -33,8 +33,10 @@ abstract final class AppTheme {
       onPrimary: AppColors.background,
       surface: AppColors.surface,
       onSurface: AppColors.text,
+      onSurfaceVariant: AppColors.muted,
       error: AppColors.loss,
     ),
+    hintColor: AppColors.muted,
     appBarTheme: const AppBarTheme(
       backgroundColor: AppColors.background,
       surfaceTintColor: Colors.transparent,
@@ -52,6 +54,10 @@ abstract final class AppTheme {
       border: OutlineInputBorder(),
       filled: true,
       fillColor: AppColors.surface,
+      hintStyle: TextStyle(
+        color: AppColors.muted,
+        fontWeight: FontWeight.normal,
+      ),
     ),
   );
 }

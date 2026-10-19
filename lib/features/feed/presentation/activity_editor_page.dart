@@ -100,7 +100,7 @@ class _ActivityEditorPageState extends State<ActivityEditorPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.post.isDraft ? 'Chia sẻ từ log buổi chơi' : 'Chỉnh bài đăng',
+          widget.post.isDraft ? 'Chia sẻ hoạt động' : 'Chỉnh bài đăng',
           style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
         ),
         actions: [
@@ -209,7 +209,7 @@ class _ActivityEditorPageState extends State<ActivityEditorPage> {
                       const SizedBox(width: 6),
                       const Expanded(
                         child: Text(
-                          'MÔ PHỎNG · nội dung chỉ lưu trong phiên',
+                          'ĐỒNG BỘ TỰ ĐỘNG · Kết quả từ phòng thi đấu',
                           style: TextStyle(
                             fontSize: 11,
                             color: AppColors.muted,

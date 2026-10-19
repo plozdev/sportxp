@@ -103,7 +103,7 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
                 ),
                 icon: const Icon(Icons.receipt_long_rounded, size: 18),
                 label: const Text(
-                  'Mở log buổi chơi',
+                  'Xem chi tiết phòng chơi',
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
                 ),
               ),

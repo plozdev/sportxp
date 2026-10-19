@@ -115,7 +115,10 @@ deferred; booking is only a host declaration, not a venue reservation.
 
 Discovery supports combined area/fixed-distance/date/skill/fee/available-slot
 filters before pagination. Private rooms are absent from discovery and visible
-under the mock friends tab when authorized. No GPS or ranking algorithm runs.
+under Private only for host/current members. Private admission requires a valid
+room code, even for friends; code lookup previews the room and join checks the
+code again. Unfriending does not affect room admission. Public discovery filters
+by the venue area selected in the mock UI; no GPS/proximity algorithm runs.
 
 `RoomRepository` and `RoomSessionRepository` define the adapter boundary, with
 immutable commands, request IDs and versioned result/attendance changes. Tests

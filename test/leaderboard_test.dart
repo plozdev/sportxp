@@ -145,5 +145,37 @@ void main() {
       await tester.tap(find.byKey(const Key('my_fixed_standing_row')));
       expect(jumped, true);
     });
+
+    testWidgets('MyFixedStandingBar does not overflow on narrow 320px device with long court name', (tester) async {
+      final sandbox = MockRoomRepository(userId: 'user-1', displayName: 'Hoàng Long Vũ');
+      final profile = (MockLeaderboardRepository(sandbox).players().first);
+      const rankInfo = PlayerCourtRank(
+        rank: 14,
+        totalPlayers: 35,
+        courtName: 'Sân Cầu Lông Kỳ Hòa 2 Quận 10 Mở Rộng',
+        courtId: 'court-a',
+        pointsToNextRank: 99,
+        nextPlayerName: 'Nguyễn Văn Minh Tuấn',
+      );
+
+      tester.view.physicalSize = const Size(320, 600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: Scaffold(
+            body: MyFixedStandingBar(
+              userProfile: profile,
+              rankSummary: rankInfo,
+              onScrollToMyRank: () {},
+            ),
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+    });
   });
 }

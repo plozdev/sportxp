@@ -55,7 +55,6 @@ class MockRoomRepository implements RoomSessionRepository, ActivityLogSource {
     } else {
       _addedFriends.remove(key);
       _removedFriends.add(key);
-      _revokeWaiting(actorId, other, privateOnly: true);
     }
   }
 
@@ -76,6 +75,14 @@ class MockRoomRepository implements RoomSessionRepository, ActivityLogSource {
   }
 
   final Map<String, int> ratings = {};
+  final Map<String, Set<String>> _codeAccess = {};
+  String _normalizeCode(String value) =>
+      value.trim().toUpperCase().replaceFirst(RegExp(r'^#'), '');
+  bool _validCode(Map<String, dynamic> room, dynamic value) =>
+      value is String &&
+      _normalizeCode(value).isNotEmpty &&
+      room['room_code'] is String &&
+      _normalizeCode(value) == _normalizeCode(room['room_code'] as String);
   void _revokeWaiting(String a, String b, {required bool privateOnly}) {
     for (final room in _rooms.values) {
       if (privateOnly && room['visibility'] != 'PRIVATE') continue;
@@ -136,6 +143,7 @@ class MockRoomRepository implements RoomSessionRepository, ActivityLogSource {
 
   void reset() {
     _generation++;
+    _codeAccess.clear();
     _removedFriends.clear();
     _addedFriends.clear();
     _blocks.clear();
@@ -165,6 +173,7 @@ class MockRoomRepository implements RoomSessionRepository, ActivityLogSource {
       final time = start.add(Duration(days: day));
       _rooms[id] = {
         'id': id,
+        'room_code': '#XP-${1001 + _rooms.length}',
         'host_id': host,
         'court_id': venues[court].id,
         'title': 'Giao lưu ${venues[court].area}',
@@ -243,7 +252,6 @@ class MockRoomRepository implements RoomSessionRepository, ActivityLogSource {
     };
   }
 
-  bool _friend(String a, String b) => areFriends(a, b);
   @override
   List<ActivityLog> activityLogs() => [
     for (final room in _rooms.values.where((r) => r['status'] == 'COMPLETED'))
@@ -295,7 +303,8 @@ class MockRoomRepository implements RoomSessionRepository, ActivityLogSource {
       r['host_id'] == actorId ||
       (r['status'] != 'DRAFT' &&
           (r['visibility'] == 'PUBLIC' ||
-              _friend(actorId, r['host_id'] as String) ||
+              (_codeAccess[actorId]?.contains(r['id']) == true &&
+                  !isBlocked(actorId, r['host_id'] as String)) ||
               _member(r, actorId) != null));
   Map<String, dynamic> _copy(Map<String, dynamic> value) =>
       Map<String, dynamic>.from(jsonDecode(jsonEncode(value)) as Map);
@@ -338,7 +347,14 @@ class MockRoomRepository implements RoomSessionRepository, ActivityLogSource {
                           DateTime.parse(r['starts_at'] as String)
                               .isAfter(DateTime.now()),
                     'connections' =>
-                      r['visibility'] == 'PRIVATE' && r['status'] == 'OPEN',
+                      r['visibility'] == 'PRIVATE' &&
+                          r['status'] == 'OPEN' &&
+                          (r['host_id'] == actorId ||
+                              [
+                                'REGISTERED',
+                                'RECONFIRM',
+                                'WAITLIST',
+                              ].contains(_member(r, actorId)?['status'])),
                     'mine' =>
                       (r['host_id'] == actorId ||
                               [
@@ -381,7 +397,16 @@ class MockRoomRepository implements RoomSessionRepository, ActivityLogSource {
   @override
   Future<ManagedRoom?> get(String id) async {
     final r = _rooms[id];
-    return r == null || !_visible(r) ? null : _projection(r);
+    if (r != null && _visible(r)) return _projection(r);
+    for (final room in _rooms.values) {
+      if (room['status'] != 'DRAFT' &&
+          !isBlocked(actorId, room['host_id'] as String) &&
+          _validCode(room, id)) {
+        _codeAccess.putIfAbsent(actorId, () => {}).add(room['id'] as String);
+        return _projection(room);
+      }
+    }
+    return null;
   }
 
   @override
@@ -445,8 +470,7 @@ class MockRoomRepository implements RoomSessionRepository, ActivityLogSource {
       if (m['status'] == 'WAITLIST' &&
           _eligible(m['id'] as String, r) &&
           !_conflicts(m['id'] as String, r) &&
-          (r['visibility'] == 'PUBLIC' ||
-              _friend(m['id'] as String, r['host_id'] as String))) {
+          (r['visibility'] == 'PUBLIC' || m['admission'] == 'ROOM_CODE')) {
         m['status'] = 'REGISTERED';
         _notify(r, 'PROMOTED');
       }
@@ -474,7 +498,12 @@ class MockRoomRepository implements RoomSessionRepository, ActivityLogSource {
     final id = c.action == 'create' ? newRoomRequestId() : c.roomId!;
     final existing = _rooms[id];
     _require(
-      c.action == 'create' || (existing != null && _visible(existing)),
+      c.action == 'create' ||
+          (existing != null &&
+              (_visible(existing) ||
+                  (['join', 'waitlist'].contains(c.action) &&
+                      existing['status'] != 'DRAFT' &&
+                      _validCode(existing, c.payload['room_code'])))),
       'Buổi chơi không khả dụng.',
     );
     final r = existing == null
@@ -503,6 +532,23 @@ class MockRoomRepository implements RoomSessionRepository, ActivityLogSource {
         );
       }
       final next = {...r, ...p};
+      final code = c.action == 'create'
+          ? (p['room_code'] as String? ??
+                '#XP-${newRoomRequestId().replaceAll('-', '').substring(0, 6).toUpperCase()}')
+          : r['room_code'] as String;
+      _require(
+        RegExp(r'^XP-[A-Z0-9]{4,8}$').hasMatch(_normalizeCode(code)) &&
+            !_rooms.values.any(
+              (other) => other['id'] != id && _validCode(other, code),
+            ),
+        'Mã phòng không hợp lệ hoặc bị trùng.',
+      );
+      _require(
+        c.action != 'edit' ||
+            p['room_code'] == null ||
+            _validCode(r, p['room_code']),
+        'Không đổi mã phòng khi sửa điều kiện.',
+      );
       _require(
         p['host_plays'] != true || _eligible(actorId, next),
         'Trình của host ngoài khoảng đã chọn.',
@@ -553,6 +599,7 @@ class MockRoomRepository implements RoomSessionRepository, ActivityLogSource {
         r['booking_status'] = 'UNCONFIRMED';
       }
       r.addAll(p);
+      r['room_code'] = '#${_normalizeCode(code)}';
       r['members'] = roster;
       r['status'] = p['draft'] == true ? 'DRAFT' : 'OPEN';
       if (c.action == 'edit') {
@@ -578,8 +625,9 @@ class MockRoomRepository implements RoomSessionRepository, ActivityLogSource {
       _require(
         !host &&
             (r['visibility'] == 'PUBLIC' ||
-                _friend(actorId, r['host_id'] as String)),
-        'Phòng riêng chỉ dành cho bạn bè giả lập hai chiều.',
+                (c.action == 'reconfirm' && m?['status'] == 'RECONFIRM') ||
+                _validCode(r, p['room_code'])),
+        'Phòng riêng cần mã phòng hợp lệ; không yêu cầu kết bạn với host.',
       );
       if (c.action == 'reconfirm') {
         _require(m?['status'] == 'RECONFIRM', 'Không có yêu cầu xác nhận lại.');
@@ -605,6 +653,7 @@ class MockRoomRepository implements RoomSessionRepository, ActivityLogSource {
           'role': 'PLAYER',
           'status': waiting ? 'WAITLIST' : 'REGISTERED',
           'is_playing': true,
+          'admission': r['visibility'] == 'PRIVATE' ? 'ROOM_CODE' : 'PUBLIC',
         };
         if (m != null) _members(r).remove(m);
         _members(r).add(entry);

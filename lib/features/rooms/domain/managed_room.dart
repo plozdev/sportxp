@@ -60,6 +60,10 @@ class ManagedRoom {
       courtLabel = json['court_label'] as String? ?? '',
       bookingStatus = json['booking_status'] as String? ?? 'UNCONFIRMED',
       viewerId = json['viewer_id'] as String?,
+      roomCode = json['room_code'] as String? ??
+          (json['id'] != null && (json['id'] as String).length >= 6
+              ? '#XP-${(json['id'] as String).replaceAll('-', '').substring(0, 4).toUpperCase()}'
+              : '#XP-8888'),
       members = List<Map<String, dynamic>>.unmodifiable(
         (json['members'] as List? ?? []).map(
           (row) => Map<String, dynamic>.unmodifiable(row as Map),
@@ -74,7 +78,8 @@ class ManagedRoom {
       status,
       hostName,
       notes,
-      courtLabel;
+      courtLabel,
+      roomCode;
   final String bookingStatus;
   final String? viewerId;
   final String? myStatus;
@@ -109,6 +114,7 @@ class ManagedRoom {
     'host_plays': hostPlays,
     'notes': notes,
     'court_label': courtLabel,
+    'room_code': roomCode,
     'draft': status == 'DRAFT',
     'expected_revision': revision,
   };

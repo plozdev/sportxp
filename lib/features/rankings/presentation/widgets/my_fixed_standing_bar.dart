@@ -60,35 +60,39 @@ class MyFixedStandingBar extends StatelessWidget {
             children: [
               // Header title của fixed bar
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.my_location,
-                        size: 13,
+                  const Icon(
+                    Icons.my_location,
+                    size: 13,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'VỊ TRÍ CỦA BẠN TẠI ${rankSummary.courtName.toUpperCase()}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
                         color: AppColors.primary,
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'VỊ TRÍ CỦA BẠN TẠI ${rankSummary.courtName.toUpperCase()}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.6,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                   if (rankSummary.pointsToNextRank != null &&
                       rankSummary.nextPlayerName != null) ...[
-                    Text(
-                      '+${rankSummary.pointsToNextRank} Elo để lên #${rankSummary.rank - 1}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.muted,
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        '+${rankSummary.pointsToNextRank} Elo để lên #${rankSummary.rank - 1}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.muted,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -159,73 +163,76 @@ class MyFixedStandingBar extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    userProfile.displayName,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w800,
-                                      color: AppColors.text,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                            Text.rich(
+                              TextSpan(
+                                text: userProfile.displayName,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.text,
                                 ),
-                                const SizedBox(width: 4),
-                                const Text(
-                                  '(Bạn)',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 5,
-                                    vertical: 1,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: tierColor.withAlpha(35),
-                                    borderRadius: BorderRadius.circular(3),
-                                  ),
-                                  child: Text(
-                                    tier.label,
+                                children: const [
+                                  TextSpan(
+                                    text: ' (Bạn)',
                                     style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w800,
-                                      color: tierColor,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.primary,
                                     ),
-                                  ),
-                                ),
-                                if (userProfile.winStreak > 0) ...[
-                                  const SizedBox(width: 6),
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.local_fire_department,
-                                        size: 12,
-                                        color: AppColors.streak,
-                                      ),
-                                      Text(
-                                        '${userProfile.winStreak}',
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w800,
-                                          color: AppColors.streak,
-                                        ),
-                                      ),
-                                    ],
                                   ),
                                 ],
-                              ],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              physics: const NeverScrollableScrollPhysics(),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: tierColor.withAlpha(35),
+                                      borderRadius: BorderRadius.circular(3),
+                                    ),
+                                    child: Text(
+                                      tier.label,
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                        color: tierColor,
+                                      ),
+                                    ),
+                                  ),
+                                  if (userProfile.winStreak > 0) ...[
+                                    const SizedBox(width: 6),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.local_fire_department,
+                                          size: 12,
+                                          color: AppColors.streak,
+                                        ),
+                                        Text(
+                                          '${userProfile.winStreak}',
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.streak,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ),
                           ],
                         ),

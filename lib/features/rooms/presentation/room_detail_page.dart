@@ -255,7 +255,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      isPrivate ? 'Kèo riêng bạn bè' : 'Kèo công khai',
+                      isPrivate ? 'Phòng riêng bằng mã' : 'Kèo công khai',
                       style: const TextStyle(fontSize: 11, color: AppColors.muted),
                     ),
                   ],
@@ -883,7 +883,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 4),
                 child: Text(
-                  'Trang chủ có nháp từ log cho từng người chơi và nháp tổng kết riêng cho host. Bạn chủ động viết caption và chia sẻ.',
+                  'Buổi chơi đã kết thúc. Bạn có thể mở Trang chủ hoặc mục Lưu trữ để xem hoạt động và chia sẻ thẻ thành tích lên bảng tin.',
                   style: TextStyle(fontSize: 12, color: AppColors.muted),
                 ),
               ),
@@ -936,7 +936,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                     ? 'Vào danh sách chờ'
                     : 'Đăng ký tham gia',
                 room.reserved >= room.capacity ? 'waitlist' : 'join',
-                payload: {'expected_revision': room.revision},
+                payload: {
+                  'expected_revision': room.revision,
+                  if (room.visibility == 'PRIVATE') 'room_code': room.roomCode,
+                },
                 isPrimary: true,
                 color: room.reserved >= room.capacity ? AppColors.streak : AppColors.primary,
               ),

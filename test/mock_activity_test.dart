@@ -362,11 +362,60 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Nháp từ log (2)'), findsOneWidget);
+      expect(find.text('Hoạt động chờ chia sẻ (2)'), findsOneWidget);
       expect(
         find.textContaining('Chưa có hoạt động được chia sẻ'),
         findsOneWidget,
       );
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'Archive tab displays athletic diary metrics and enables Strava card sharing',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: Scaffold(
+            body: ActivityFeedPage(
+              repository: repo,
+              rooms: rooms,
+              refreshToken: 0,
+              onFindRooms: () {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tap on Kho lưu trữ tab
+      await tester.tap(find.text('Kho lưu trữ'));
+      await tester.pumpAndSettle();
+
+      // Verify Athletic Summary metrics
+      expect(find.text('TỔNG KẾT THI ĐẤU'), findsOneWidget);
+      expect(find.text('Nhật ký các buổi chơi đã đồng bộ'), findsOneWidget);
+      expect(find.text('Buổi chơi'), findsOneWidget);
+      expect(find.text('Số trận'), findsOneWidget);
+
+      // Verify archived items & Strava share buttons are rendered
+      expect(find.text('Chia sẻ thẻ ảnh'), findsWidgets);
+
+      // Tap 'Chia sẻ thẻ ảnh' to open Strava share sheet
+      await tester.ensureVisible(find.text('Chia sẻ thẻ ảnh').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Chia sẻ thẻ ảnh').first);
+      await tester.pumpAndSettle();
+
+      // Verify Strava Share Sheet opened
+      expect(find.text('Chia sẻ thành tích'), findsOneWidget);
+      expect(find.text('SPORTXP'), findsOneWidget);
+      expect(find.text('Sao chép link'), findsOneWidget);
+
+      // Close share sheet
+      await tester.tap(find.byIcon(Icons.close));
+      await tester.pumpAndSettle();
+
       expect(tester.takeException(), isNull);
     },
   );

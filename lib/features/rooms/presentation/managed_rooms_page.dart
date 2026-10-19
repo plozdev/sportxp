@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../data/managed_room_repository.dart';
+import '../data/mock_room_repository.dart';
 import '../domain/managed_room.dart';
 import '../domain/room_repository.dart';
 import 'room_detail_page.dart';
-import '../data/mock_room_repository.dart';
 import 'widgets/room_card.dart';
 import 'widgets/room_filter_sheet.dart';
 
@@ -24,7 +25,13 @@ class ManagedRoomsPage extends StatefulWidget {
 }
 
 class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
-  String _scope = 'discover';
+  // Navigation tabs: 'discover' (Sảnh Public), 'connections' (Phòng Private), 'mine' (Buổi của tôi)
+  String _mainTab = 'discover';
+  // Sub-tab for 'mine': 'mine' (Sắp tới) or 'history' (Lịch sử)
+  String _mineSubTab = 'mine';
+
+  String get _scope => _mainTab == 'mine' ? _mineSubTab : _mainTab;
+
   final List<ManagedRoom> _items = [];
   List<Map<String, dynamic>> _notices = [];
   bool _loading = false, _more = true;
@@ -109,6 +116,168 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
     if (mounted) _load(reset: true);
   }
 
+  Future<void> _showJoinByCodeSheet() async {
+    final controller = TextEditingController();
+    String? localError;
+    bool searching = false;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 16,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: const [
+                  Icon(
+                    Icons.vpn_key_rounded,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'VÀO PHÒNG BẰNG MÃ',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.text,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Nhập mã phòng (ví dụ: #XP-8291) để tìm và tham gia kèo đấu riêng tư hoặc công khai.',
+                style: TextStyle(fontSize: 12, color: AppColors.muted),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                textCapitalization: TextCapitalization.characters,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.5,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'VD: #XP-8291 hoặc 8291',
+                  prefixIcon: const Icon(
+                    Icons.tag_rounded,
+                    color: AppColors.primary,
+                  ),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.paste_rounded, size: 20),
+                    tooltip: 'Dán mã',
+                    onPressed: () async {
+                      final data = await Clipboard.getData(
+                        Clipboard.kTextPlain,
+                      );
+                      if (data?.text != null) {
+                        controller.text = data!.text!.trim();
+                      }
+                    },
+                  ),
+                ),
+              ),
+              if (localError != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  localError!,
+                  style: const TextStyle(
+                    color: AppColors.loss,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 18),
+              FilledButton(
+                onPressed: searching
+                    ? null
+                    : () async {
+                        final code = controller.text.trim();
+                        if (code.isEmpty) {
+                          setModalState(
+                            () => localError = 'Vui lòng nhập mã phòng.',
+                          );
+                          return;
+                        }
+                        setModalState(() {
+                          searching = true;
+                          localError = null;
+                        });
+                        try {
+                          final room = await widget.repository.get(code);
+                          if (!mounted) return;
+                          if (room == null) {
+                            setModalState(() {
+                              searching = false;
+                              localError =
+                                  'Không tìm thấy phòng với mã "$code".';
+                            });
+                            return;
+                          }
+                          if (!ctx.mounted) return;
+                          Navigator.pop(ctx);
+                          if (mounted) _open(room.id);
+                        } catch (e) {
+                          if (mounted) {
+                            setModalState(() {
+                              searching = false;
+                              localError = roomFailure(e);
+                            });
+                          }
+                        }
+                      },
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.background,
+                  minimumSize: const Size(double.infinity, 48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  searching ? 'ĐANG TÌM PHÒNG…' : 'VÀO PHÒNG NGAY',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   String _noticeText(String kind) => switch (kind) {
     'TERMS_CHANGED' => 'Điều kiện buổi chơi đã đổi; cần xem và xác nhận lại.',
     'PROMOTED' => 'Bạn đã được lên chỗ chính thức từ danh sách chờ.',
@@ -124,63 +293,218 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
     _ => kind,
   };
 
-  Widget _buildScopeSelector() {
-    final scopes = {
-      'discover': 'Tìm kèo',
-      'mine': 'Buổi của tôi',
-      'history': 'Lịch sử',
-      if (widget.repository is MockRoomRepository)
-        'connections': 'Kèo riêng bạn bè',
-    };
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+  // TOP LOBBY HEADER BAR
+  Widget _buildTopLobbyBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
         children: [
-          for (final e in scopes.entries) ...[
-            ChoiceChip(
-              label: Text(
-                e.value,
-                style: TextStyle(
-                  fontWeight: _scope == e.key ? FontWeight.w700 : FontWeight.w500,
-                  fontSize: 13,
-                  color: _scope == e.key ? AppColors.background : AppColors.text,
-                ),
-              ),
-              selected: _scope == e.key,
-              selectedColor: AppColors.primary,
-              backgroundColor: AppColors.surface,
-              side: BorderSide(
-                color: _scope == e.key ? AppColors.primary : AppColors.border,
-              ),
-              showCheckmark: false,
-              onSelected: _loading
-                  ? null
-                  : (_) {
-                      setState(() => _scope = e.key);
-                      _load(reset: true);
-                    },
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.border),
             ),
-            const SizedBox(width: 8),
-          ],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Icon(
+                  Icons.sports_esports_rounded,
+                  color: AppColors.primary,
+                  size: 16,
+                ),
+                SizedBox(width: 6),
+                Text(
+                  'SẢNH KÈO ĐẤU',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
+          // Quick Join by Code Button
+          OutlinedButton.icon(
+            onPressed: _showJoinByCodeSheet,
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AppColors.border),
+              backgroundColor: AppColors.surface,
+              foregroundColor: AppColors.text,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              minimumSize: Size.zero,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            icon: const Icon(
+              Icons.tag_rounded,
+              size: 14,
+              color: AppColors.primary,
+            ),
+            label: const Text(
+              'Nhập mã',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+          ),
+          const SizedBox(width: 8),
           IconButton.filledTonal(
             onPressed: _loading ? null : () => _load(reset: true),
-            icon: const Icon(Icons.refresh, size: 18),
+            icon: const Icon(Icons.refresh_rounded, size: 18),
             style: IconButton.styleFrom(
               backgroundColor: AppColors.surface,
               foregroundColor: AppColors.muted,
               side: const BorderSide(color: AppColors.border),
             ),
-            tooltip: 'Tải lại',
+            tooltip: 'Tải lại sảnh',
           ),
         ],
       ),
     );
   }
 
+  // 3-TAB SEGMENTED CONTROLLER (Public, Private, Mine)
+  Widget _buildScopeTabs() {
+    final tabs = [
+      {'key': 'discover', 'label': 'Sảnh Public', 'icon': Icons.public_rounded},
+      {
+        'key': 'connections',
+        'label': 'Phòng Private',
+        'icon': Icons.lock_rounded,
+      },
+      {'key': 'mine', 'label': 'Buổi của tôi', 'icon': Icons.person_rounded},
+    ];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              for (final t in tabs) ...[
+                Expanded(
+                  child: InkWell(
+                    onTap: _loading
+                        ? null
+                        : () {
+                            if (_mainTab == t['key']) return;
+                            setState(() => _mainTab = t['key'] as String);
+                            _load(reset: true);
+                          },
+                    borderRadius: BorderRadius.circular(12),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(vertical: 9),
+                      decoration: BoxDecoration(
+                        color: _mainTab == t['key']
+                            ? (_mainTab == 'connections'
+                                  ? AppColors.streak.withValues(alpha: 0.15)
+                                  : AppColors.primary.withValues(alpha: 0.15))
+                            : AppColors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _mainTab == t['key']
+                              ? (_mainTab == 'connections'
+                                    ? AppColors.streak
+                                    : AppColors.primary)
+                              : AppColors.border,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            t['icon'] as IconData,
+                            size: 14,
+                            color: _mainTab == t['key']
+                                ? (_mainTab == 'connections'
+                                      ? AppColors.streak
+                                      : AppColors.primary)
+                                : AppColors.muted,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            t['label'] as String,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: _mainTab == t['key']
+                                  ? FontWeight.w800
+                                  : FontWeight.w600,
+                              color: _mainTab == t['key']
+                                  ? AppColors.text
+                                  : AppColors.muted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                if (t != tabs.last) const SizedBox(width: 8),
+              ],
+            ],
+          ),
+
+          // SUB-TAB TOGGLE FOR "BUỔI CỦA TÔI" (Sắp tới vs Lịch sử)
+          if (_mainTab == 'mine') ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ChoiceChip(
+                  label: const Text('Sắp tới', style: TextStyle(fontSize: 11)),
+                  selected: _mineSubTab == 'mine',
+                  selectedColor: AppColors.primary,
+                  backgroundColor: AppColors.surface,
+                  side: BorderSide(
+                    color: _mineSubTab == 'mine'
+                        ? AppColors.primary
+                        : AppColors.border,
+                  ),
+                  showCheckmark: false,
+                  onSelected: _loading
+                      ? null
+                      : (_) {
+                          setState(() => _mineSubTab = 'mine');
+                          _load(reset: true);
+                        },
+                ),
+                const SizedBox(width: 8),
+                ChoiceChip(
+                  label: const Text('Lịch sử', style: TextStyle(fontSize: 11)),
+                  selected: _mineSubTab == 'history',
+                  selectedColor: AppColors.primary,
+                  backgroundColor: AppColors.surface,
+                  side: BorderSide(
+                    color: _mineSubTab == 'history'
+                        ? AppColors.primary
+                        : AppColors.border,
+                  ),
+                  showCheckmark: false,
+                  onSelected: _loading
+                      ? null
+                      : (_) {
+                          setState(() => _mineSubTab = 'history');
+                          _load(reset: true);
+                        },
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // STREAMLINED QUICK FILTER BAR
   Widget _buildQuickFilterBar() {
-    if (widget.repository is! MockRoomRepository || _scope != 'discover') {
+    if (widget.repository is! MockRoomRepository ||
+        (_mainTab != 'discover' && _mainTab != 'connections')) {
       return const SizedBox.shrink();
     }
 
@@ -195,20 +519,20 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Row(
         children: [
-          // Filter BottomSheet Opener Button
+          // Filter BottomSheet Opener
           ActionChip(
             avatar: Icon(
-              Icons.tune,
-              size: 15,
+              Icons.tune_rounded,
+              size: 14,
               color: activeCount > 0 ? AppColors.primary : AppColors.muted,
             ),
             label: Text(
               activeCount > 0 ? 'Bộ lọc ($activeCount)' : 'Bộ lọc',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: activeCount > 0 ? FontWeight.w700 : FontWeight.w500,
                 color: activeCount > 0 ? AppColors.primary : AppColors.text,
               ),
@@ -235,15 +559,17 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
           ),
           const SizedBox(width: 8),
 
-          // Available only quick toggle
+          // Available only toggle
           FilterChip(
-            label: const Text('Còn chỗ', style: TextStyle(fontSize: 12)),
+            label: const Text('Còn chỗ', style: TextStyle(fontSize: 11)),
             selected: _filter.availableOnly,
             selectedColor: AppColors.primary.withValues(alpha: 0.15),
             checkmarkColor: AppColors.primary,
             backgroundColor: AppColors.surface,
             side: BorderSide(
-              color: _filter.availableOnly ? AppColors.primary : AppColors.border,
+              color: _filter.availableOnly
+                  ? AppColors.primary
+                  : AppColors.border,
             ),
             onSelected: (val) {
               setState(() => _filter.availableOnly = val);
@@ -256,7 +582,7 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
           ActionChip(
             avatar: Icon(
               Icons.calendar_today_outlined,
-              size: 14,
+              size: 13,
               color: _filter.date != null ? AppColors.primary : AppColors.muted,
             ),
             label: Text(
@@ -264,13 +590,17 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
                   ? 'Ngày chơi'
                   : '${_filter.date!.day}/${_filter.date!.month}',
               style: TextStyle(
-                fontSize: 12,
-                color: _filter.date != null ? AppColors.primary : AppColors.text,
+                fontSize: 11,
+                color: _filter.date != null
+                    ? AppColors.primary
+                    : AppColors.text,
               ),
             ),
             backgroundColor: AppColors.surface,
             side: BorderSide(
-              color: _filter.date != null ? AppColors.primary : AppColors.border,
+              color: _filter.date != null
+                  ? AppColors.primary
+                  : AppColors.border,
             ),
             onPressed: () async {
               final now = DateTime.now();
@@ -288,30 +618,15 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
           ),
           const SizedBox(width: 8),
 
-          // Area quick chip if selected
-          if (_filter.area != 'Tất cả') ...[
-            Chip(
-              label: Text(_filter.area, style: const TextStyle(fontSize: 12)),
-              deleteIcon: const Icon(Icons.close, size: 14),
-              onDeleted: () {
-                setState(() => _filter.area = 'Tất cả');
-                _load(reset: true);
-              },
-              backgroundColor: AppColors.surface,
-              side: const BorderSide(color: AppColors.primary),
-            ),
-            const SizedBox(width: 8),
-          ],
-
-          // Reset all if any filter is active
+          // Reset if active
           if (_filter.hasActiveFilter)
             TextButton.icon(
               onPressed: () {
                 setState(() => _filter.reset());
                 _load(reset: true);
               },
-              icon: const Icon(Icons.clear_all, size: 16),
-              label: const Text('Xóa lọc', style: TextStyle(fontSize: 12)),
+              icon: const Icon(Icons.clear_all_rounded, size: 16),
+              label: const Text('Xóa lọc', style: TextStyle(fontSize: 11)),
               style: TextButton.styleFrom(
                 foregroundColor: AppColors.loss,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -322,44 +637,119 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
     );
   }
 
+  // PRIVATE ROOM BANNER (Quick explanation & join CTA)
+  Widget _buildPrivateRoomBanner() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.streak.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.streak.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.lock_open_rounded,
+              color: AppColors.streak,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  'Phòng riêng bằng mã',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.text,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Có mã từ host? Nhập mã để xem và đăng ký, không cần kết bạn.',
+                  style: TextStyle(fontSize: 11, color: AppColors.muted),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          FilledButton.tonal(
+            onPressed: _showJoinByCodeSheet,
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.streak.withValues(alpha: 0.2),
+              foregroundColor: AppColors.streak,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text(
+              'Nhập mã',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildNoticesBanner() {
     if (_notices.isEmpty) return const SizedBox.shrink();
 
     final unreadCount = _notices.where((n) => n['read'] != true).length;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: unreadCount > 0
-              ? AppColors.streak.withValues(alpha: 0.5)
-              : AppColors.border,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: unreadCount > 0
+                ? AppColors.streak.withValues(alpha: 0.5)
+                : AppColors.border,
+          ),
         ),
-      ),
-      child: Column(
+        clipBehavior: Clip.antiAlias,
+        child: Column(
         children: [
           InkWell(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             onTap: () => setState(() => _noticesExpanded = !_noticesExpanded),
             child: Padding(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
                   Icon(
-                    Icons.notifications_active_outlined,
-                    size: 18,
+                    unreadCount > 0
+                        ? Icons.notifications_active
+                        : Icons.notifications_outlined,
                     color: unreadCount > 0 ? AppColors.streak : AppColors.muted,
+                    size: 18,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Thông báo buổi chơi${unreadCount > 0 ? ' ($unreadCount chưa đọc)' : ''}',
+                      unreadCount > 0
+                          ? 'Bạn có $unreadCount thông báo buổi chơi mới'
+                          : 'Thông báo buổi chơi (${_notices.length})',
                       style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                        color: unreadCount > 0 ? AppColors.text : AppColors.muted,
+                        fontSize: 12,
+                        fontWeight: unreadCount > 0
+                            ? FontWeight.bold
+                            : FontWeight.w500,
+                        color: unreadCount > 0
+                            ? AppColors.text
+                            : AppColors.muted,
                       ),
                     ),
                   ),
@@ -367,8 +757,8 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
                     _noticesExpanded
                         ? Icons.keyboard_arrow_up
                         : Icons.keyboard_arrow_down,
-                    size: 18,
                     color: AppColors.muted,
+                    size: 18,
                   ),
                 ],
               ),
@@ -376,11 +766,11 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
           ),
           if (_noticesExpanded) ...[
             const Divider(height: 1, color: AppColors.border),
-            for (final notice in _notices)
+            for (final notice in _notices.take(5))
               ListTile(
                 dense: true,
                 contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
+                  horizontal: 14,
                   vertical: 2,
                 ),
                 leading: Container(
@@ -395,7 +785,7 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
                 ),
                 title: Text(
                   _noticeText(notice['kind'] as String),
-                  style: const TextStyle(fontSize: 13, color: AppColors.text),
+                  style: const TextStyle(fontSize: 12, color: AppColors.text),
                 ),
                 subtitle: Text(
                   'Bản ${notice['revision']} • ${notice['created_at']}',
@@ -410,7 +800,7 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
               ),
             if (unreadCount > 0)
               Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(8),
                 child: TextButton.icon(
                   onPressed: () async {
                     try {
@@ -428,61 +818,73 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
                   },
                   icon: const Icon(Icons.done_all, size: 16),
                   label: const Text(
-                    'Đánh dấu đã đọc các thông báo',
-                    style: TextStyle(fontSize: 12),
+                    'Đánh dấu đã đọc',
+                    style: TextStyle(fontSize: 11),
                   ),
                 ),
               ),
           ],
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildEmptyState() {
     final icon = switch (_scope) {
       'mine' => Icons.sports_tennis_outlined,
       'history' => Icons.history_toggle_off,
-      'connections' => Icons.group_outlined,
+      'connections' => Icons.lock_outline_rounded,
       _ => Icons.search_off_outlined,
     };
 
     final message = switch (_scope) {
       'mine' => 'Bạn chưa tham gia hoặc làm host buổi chơi nào.',
       'history' => 'Chưa có lịch sử buổi chơi nào hoàn tất.',
-      'connections' => 'Chưa có kèo riêng nào từ bạn bè hai chiều.',
-      _ => _filter.hasActiveFilter
-          ? 'Không tìm thấy kèo phù hợp với bộ lọc.'
-          : 'Chưa có buổi chơi nào mở tuyển trong khu vực.',
+      'connections' => 'Chưa có phòng riêng đã tham gia. Nhập mã host chia sẻ để xem và đăng ký!',
+      _ =>
+        _filter.hasActiveFilter
+            ? 'Không tìm thấy kèo phù hợp với bộ lọc.'
+            : 'Chưa có buổi chơi nào mở tuyển trong khu vực.',
     };
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(18),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.border),
               ),
-              child: Icon(icon, size: 36, color: AppColors.muted),
+              child: Icon(icon, size: 32, color: AppColors.muted),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             Text(
               message,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 15,
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: AppColors.text,
               ),
             ),
-            const SizedBox(height: 8),
-            if (_filter.hasActiveFilter && _scope == 'discover')
+            const SizedBox(height: 12),
+            if (_mainTab == 'connections')
+              FilledButton.icon(
+                onPressed: _showJoinByCodeSheet,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.background,
+                ),
+                icon: const Icon(Icons.tag_rounded, size: 16),
+                label: const Text('Nhập mã phòng'),
+              )
+            else if (_filter.hasActiveFilter && _scope == 'discover')
               OutlinedButton.icon(
                 onPressed: () {
                   setState(() => _filter.reset());
@@ -505,15 +907,18 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
     backgroundColor: AppColors.background,
     body: Column(
       children: [
-        // Scope Navigation Bar
-        _buildScopeSelector(),
+        // 1. Top Lobby Bar with "Nhập mã phòng" action
+        _buildTopLobbyBar(),
 
-        // Quick Filter Bar
+        // 2. Segmented 3-Tab Navigator (Public, Private, Mine)
+        _buildScopeTabs(),
+
+        // 3. Quick Filter Bar
         _buildQuickFilterBar(),
 
         const SizedBox(height: 4),
 
-        // Main List Content
+        // 4. Main List Content
         Expanded(
           child: RefreshIndicator(
             color: AppColors.primary,
@@ -528,6 +933,9 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
                   children: [
+                    // Private room info banner when on Private tab
+                    if (_mainTab == 'connections') _buildPrivateRoomBanner(),
+
                     // Notices Banner
                     _buildNoticesBanner(),
 
@@ -545,8 +953,8 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
 
                     if (_error != null)
                       Container(
-                        padding: const EdgeInsets.all(16),
-                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(14),
+                        margin: const EdgeInsets.only(bottom: 14),
                         decoration: BoxDecoration(
                           color: AppColors.loss.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
@@ -559,14 +967,15 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
                             const Icon(
                               Icons.error_outline,
                               color: AppColors.loss,
+                              size: 20,
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 10),
                             Expanded(
                               child: Text(
                                 _error!,
                                 style: const TextStyle(
                                   color: AppColors.loss,
-                                  fontSize: 13,
+                                  fontSize: 12,
                                 ),
                               ),
                             ),
@@ -580,11 +989,8 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
 
                     // Room Cards
                     for (final room in _items) ...[
-                      RoomCard(
-                        room: room,
-                        onTap: () => _open(room.id),
-                      ),
-                      const SizedBox(height: 14),
+                      RoomCard(room: room, onTap: () => _open(room.id)),
+                      const SizedBox(height: 12),
                     ],
 
                     // Loading State
@@ -604,14 +1010,20 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
                       _buildEmptyState(),
 
                     // Pagination Load More Button
-                    if (!_loading && _more && _error == null && _items.isNotEmpty)
+                    if (!_loading &&
+                        _more &&
+                        _error == null &&
+                        _items.isNotEmpty)
                       Center(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           child: OutlinedButton.icon(
                             onPressed: () => _load(),
                             style: OutlinedButton.styleFrom(
-                              minimumSize: const Size(180, AppTokens.touchTarget),
+                              minimumSize: const Size(
+                                180,
+                                AppTokens.touchTarget,
+                              ),
                               side: const BorderSide(color: AppColors.border),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
