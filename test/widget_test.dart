@@ -140,7 +140,15 @@ void main() {
       expect(find.text('Chào mừng trở lại.'), findsNothing);
       await tester.tap(find.text('Xếp hạng'));
       await tester.pumpAndSettle();
-      if (const bool.fromEnvironment('ROOMS_MOCK_ENABLED', defaultValue: true)) {
+      if (const bool.fromEnvironment(
+        'ROOMS_MOCK_ENABLED',
+        defaultValue: true,
+      )) {
+        await tester.scrollUntilVisible(
+          find.text('Bảo · giả lập'),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
         expect(find.text('Bảo · giả lập'), findsOneWidget);
         expect(find.text('1000'), findsOneWidget);
       } else {
