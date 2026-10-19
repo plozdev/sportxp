@@ -79,16 +79,24 @@ class _OnboardingPageState extends State<OnboardingPage> {
   @override
   Widget build(BuildContext context) {
     final reducedMotion = MediaQuery.disableAnimationsOf(context);
+    final compactSignOut = MediaQuery.textScalerOf(context).scale(1) > 1.3;
     return PopScope(
       canPop: false,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('SPORTXP'),
           actions: [
-            TextButton(
-              onPressed: _saving ? null : widget.onSignOut,
-              child: const Text('Đăng xuất'),
-            ),
+            if (compactSignOut)
+              IconButton(
+                onPressed: _saving ? null : widget.onSignOut,
+                icon: const Icon(Icons.logout),
+                tooltip: 'Đăng xuất',
+              )
+            else
+              TextButton(
+                onPressed: _saving ? null : widget.onSignOut,
+                child: const Text('Đăng xuất'),
+              ),
           ],
         ),
         body: SafeArea(

@@ -86,6 +86,19 @@ Future<void> choose(WidgetTester tester, int question, int answer) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> tapVisibleText(WidgetTester tester, String text) async {
+  final target = find.text(text);
+  await tester.scrollUntilVisible(
+    target,
+    160,
+    scrollable: find.byType(Scrollable).last,
+  );
+  await Scrollable.ensureVisible(tester.element(target), alignment: .2);
+  await tester.pumpAndSettle();
+  await tester.tap(target.hitTestable().first);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
@@ -197,15 +210,7 @@ void main() {
       expect(find.byKey(const ValueKey('question-1')), findsOneWidget);
       expect(repo.answers, [2]);
       repo.fail = false;
-      await tester.scrollUntilVisible(
-        find.text('Lưu lại câu trả lời'),
-        160,
-        scrollable: find.byType(Scrollable).last,
-      );
-      await tester.tap(find.text('Lưu lại câu trả lời'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
-      await tester.pumpAndSettle();
+      await tapVisibleText(tester, 'Lưu lại câu trả lời');
       expect(find.text('Bước 3/5'), findsOneWidget);
       // Recreate the page with server-persisted progress.
       await tester.pumpWidget(const SizedBox());
@@ -234,12 +239,7 @@ void main() {
       expect(find.text('Unverified · Chưa xác minh'), findsOneWidget);
       expect(find.text('Hoàng Nguyễn'), findsOneWidget);
       expect(repo.saves, 5);
-      await tester.scrollUntilVisible(
-        find.text('BẮT ĐẦU LÊN SÂN'),
-        160,
-        scrollable: find.byType(Scrollable).last,
-      );
-      await tester.tap(find.text('BẮT ĐẦU LÊN SÂN'));
+      await tapVisibleText(tester, 'BẮT ĐẦU LÊN SÂN');
       expect(finished, true);
       expect(tester.takeException(), isNull);
     },
