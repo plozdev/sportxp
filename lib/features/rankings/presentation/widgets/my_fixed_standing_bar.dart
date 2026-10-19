@@ -47,18 +47,16 @@ class MyFixedStandingBar extends StatelessWidget {
       width: double.infinity,
       decoration: const BoxDecoration(
         color: AppColors.surface,
-        border: Border(
-          top: BorderSide(color: AppColors.border, width: 1.5),
-        ),
+        border: Border(top: BorderSide(color: AppColors.border, width: 1.5)),
       ),
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header title của fixed bar
+              // Header title của fixed bar: Tên sân + Khoảng cách đối thủ liền kề (an toàn chống tràn)
               Row(
                 children: [
                   const Icon(
@@ -80,12 +78,11 @@ class MyFixedStandingBar extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (rankSummary.pointsToNextRank != null &&
-                      rankSummary.nextPlayerName != null) ...[
+                  if (rankSummary.pointsToNextRank != null) ...[
                     const SizedBox(width: 8),
                     Flexible(
                       child: Text(
-                        '+${rankSummary.pointsToNextRank} Elo để lên #${rankSummary.rank - 1}',
+                        'Cách #${rankSummary.rank - 1}: ${rankSummary.pointsToNextRank} Elo',
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -98,7 +95,7 @@ class MyFixedStandingBar extends StatelessWidget {
                   ],
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
 
               // Nội dung hàng của bạn
               InkWell(
@@ -106,7 +103,10 @@ class MyFixedStandingBar extends StatelessWidget {
                 onTap: onScrollToMyRank,
                 borderRadius: BorderRadius.circular(10),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 7,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.background,
                     borderRadius: BorderRadius.circular(10),
@@ -117,28 +117,46 @@ class MyFixedStandingBar extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      // Badge Rank
+                      // Badge Rank + Movement delta
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primary,
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: Text(
-                          '#${rankSummary.rank}',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFF07080A),
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '#${rankSummary.rank}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF07080A),
+                              ),
+                            ),
+                            if (rankSummary.rankDelta != 0) ...[
+                              const SizedBox(width: 2),
+                              Icon(
+                                rankSummary.rankDelta > 0
+                                    ? Icons.arrow_drop_up
+                                    : Icons.arrow_drop_down,
+                                size: 14,
+                                color: const Color(0xFF07080A),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
 
                       // Avatar
                       Container(
-                        width: 34,
-                        height: 34,
+                        width: 32,
+                        height: 32,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: AppColors.surface,
@@ -148,14 +166,14 @@ class MyFixedStandingBar extends StatelessWidget {
                           child: Text(
                             userProfile.initials,
                             style: const TextStyle(
-                              fontSize: 13,
+                              fontSize: 12,
                               fontWeight: FontWeight.w800,
                               color: AppColors.primary,
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
 
                       // Tên & Tier
                       Expanded(
@@ -167,7 +185,7 @@ class MyFixedStandingBar extends StatelessWidget {
                               TextSpan(
                                 text: userProfile.displayName,
                                 style: const TextStyle(
-                                  fontSize: 14,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.text,
                                 ),
@@ -175,7 +193,7 @@ class MyFixedStandingBar extends StatelessWidget {
                                   TextSpan(
                                     text: ' (Bạn)',
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: 10,
                                       fontWeight: FontWeight.w700,
                                       color: AppColors.primary,
                                     ),
@@ -186,57 +204,56 @@ class MyFixedStandingBar extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 2),
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              physics: const NeverScrollableScrollPhysics(),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 5,
-                                      vertical: 1,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: tierColor.withAlpha(35),
-                                      borderRadius: BorderRadius.circular(3),
-                                    ),
-                                    child: Text(
-                                      tier.label,
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w800,
-                                        color: tierColor,
-                                      ),
+                            Wrap(
+                              spacing: 2,
+                              runSpacing: 2,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 1,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: tierColor.withAlpha(35),
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                  child: Text(
+                                    tier.label,
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                      color: tierColor,
                                     ),
                                   ),
-                                  if (userProfile.winStreak > 0) ...[
-                                    const SizedBox(width: 6),
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          Icons.local_fire_department,
-                                          size: 12,
+                                ),
+                                if (userProfile.winStreak > 0) ...[
+                                  const SizedBox(width: 4),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.local_fire_department,
+                                        size: 11,
+                                        color: AppColors.streak,
+                                      ),
+                                      Text(
+                                        '${userProfile.winStreak}',
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w800,
                                           color: AppColors.streak,
                                         ),
-                                        Text(
-                                          '${userProfile.winStreak}',
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w800,
-                                            color: AppColors.streak,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                      ),
+                                    ],
+                                  ),
                                 ],
-                              ),
+                              ],
                             ),
                           ],
                         ),
                       ),
+
+                      const SizedBox(width: 6),
 
                       // Elo & Nút cuộn
                       Column(
@@ -249,7 +266,7 @@ class MyFixedStandingBar extends StatelessWidget {
                               Text(
                                 '$elo',
                                 style: const TextStyle(
-                                  fontSize: 17,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.primary,
                                   fontFeatures: [FontFeature.tabularFigures()],
@@ -259,14 +276,13 @@ class MyFixedStandingBar extends StatelessWidget {
                               const Text(
                                 'Elo',
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 9,
                                   fontWeight: FontWeight.w600,
                                   color: Color(0xFF9E9E9E),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 2),
                           const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -278,7 +294,7 @@ class MyFixedStandingBar extends StatelessWidget {
                                   color: AppColors.muted,
                                 ),
                               ),
-                              SizedBox(width: 2),
+                              SizedBox(width: 1),
                               Icon(
                                 Icons.arrow_upward,
                                 size: 10,

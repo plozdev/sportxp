@@ -11,18 +11,20 @@ class DuolingoRankRow extends StatelessWidget {
     required this.rank,
     required this.isCurrentUser,
     required this.onTap,
+    this.showDivider = true,
   });
 
   final PlayerProfile player;
   final int rank;
   final bool isCurrentUser;
   final VoidCallback onTap;
+  final bool showDivider;
 
   Color _getRankColor() {
-    if (rank == 1) return const Color(0xFFFFD700);
-    if (rank == 2) return const Color(0xFFC0C0C0);
-    if (rank == 3) return const Color(0xFFCD7F32);
-    return isCurrentUser ? AppColors.primary : const Color(0xFFB0B8C4);
+    if (rank == 1) return const Color(0xFFF59E0B);
+    if (rank == 2) return const Color(0xFF94A3B8);
+    if (rank == 3) return const Color(0xFFD97706);
+    return isCurrentUser ? AppColors.primary : const Color(0xFF64748B);
   }
 
   Color _getTierColor(RankTier tier) {
@@ -44,6 +46,49 @@ class DuolingoRankRow extends StatelessWidget {
     }
   }
 
+  Widget _buildRankDelta(int delta) {
+    if (delta > 0) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.arrow_drop_up, size: 13, color: Color(0xFF10B981)),
+          Text(
+            '$delta',
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF10B981),
+            ),
+          ),
+        ],
+      );
+    } else if (delta < 0) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.arrow_drop_down, size: 13, color: Color(0xFFEF4444)),
+          Text(
+            '${delta.abs()}',
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFFEF4444),
+            ),
+          ),
+        ],
+      );
+    } else {
+      return const Text(
+        '–',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF64748B),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final rankColor = _getRankColor();
@@ -53,71 +98,56 @@ class DuolingoRankRow extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        height: 64,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: isCurrentUser
-              ? AppColors.primary.withAlpha(24)
-              : AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isCurrentUser
-                ? AppColors.primary
-                : (rank <= 3
-                    ? rankColor.withAlpha(50)
-                    : AppColors.border),
-            width: isCurrentUser ? 1.5 : 1.0,
+              ? AppColors.primary.withAlpha(22)
+              : Colors.transparent,
+          border: Border(
+            left: BorderSide(
+              color: isCurrentUser ? AppColors.primary : Colors.transparent,
+              width: 3.5,
+            ),
+            bottom: showDivider
+                ? BorderSide(
+                    color: AppColors.border.withAlpha(45),
+                    width: 0.8,
+                  )
+                : BorderSide.none,
           ),
         ),
         child: Row(
           children: [
-            // Rank Number / Medal
+            // Rank Number & Movement Delta
             SizedBox(
-              width: 38,
-              child: rank <= 3
-                  ? Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          rank == 1
-                              ? Icons.emoji_events
-                              : rank == 2
-                              ? Icons.military_tech
-                              : Icons.workspace_premium,
-                          color: rankColor,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 2),
-                        Text(
-                          '$rank',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                            color: rankColor,
-                          ),
-                        ),
-                      ],
-                    )
-                  : Text(
-                      '$rank',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: isCurrentUser ? FontWeight.w900 : FontWeight.w700,
-                        color: isCurrentUser ? AppColors.primary : const Color(0xFF9EA3AE),
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
-                      textAlign: TextAlign.center,
+              width: 44,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    '#$rank',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: rank <= 3 || isCurrentUser
+                          ? FontWeight.w900
+                          : FontWeight.w700,
+                      color: rankColor,
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
+                  ),
+                  const SizedBox(height: 1),
+                  _buildRankDelta(player.rankDelta),
+                ],
+              ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
 
             // Avatar
             Container(
-              width: 38,
-              height: 38,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: AppColors.background,
@@ -130,7 +160,7 @@ class DuolingoRankRow extends StatelessWidget {
                 child: Text(
                   player.initials,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: isCurrentUser ? AppColors.primary : AppColors.text,
                   ),
@@ -151,8 +181,10 @@ class DuolingoRankRow extends StatelessWidget {
                         child: Text(
                           player.displayName,
                           style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: isCurrentUser ? FontWeight.w800 : FontWeight.w700,
+                            fontSize: 14,
+                            fontWeight: isCurrentUser
+                                ? FontWeight.w800
+                                : FontWeight.w600,
                             color: AppColors.text,
                           ),
                           maxLines: 1,
@@ -162,7 +194,10 @@ class DuolingoRankRow extends StatelessWidget {
                       if (isCurrentUser) ...[
                         const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 1.5,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.primary,
                             borderRadius: BorderRadius.circular(4),
@@ -170,7 +205,7 @@ class DuolingoRankRow extends StatelessWidget {
                           child: const Text(
                             'BẠN',
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 9,
                               fontWeight: FontWeight.w900,
                               color: Color(0xFF07080A),
                               letterSpacing: 0.5,
@@ -183,51 +218,44 @@ class DuolingoRankRow extends StatelessWidget {
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      // Tier badge rõ ràng, tương phản tốt
+                      // Tier badge
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1,
+                        ),
                         decoration: BoxDecoration(
-                          color: tierColor.withAlpha(35),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: tierColor.withAlpha(120), width: 1.0),
+                          color: tierColor.withAlpha(25),
+                          borderRadius: BorderRadius.circular(3),
                         ),
                         child: Text(
                           tier.label,
                           style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
                             color: tierColor,
                           ),
                         ),
                       ),
-                      // Streak rõ ràng, rực lửa
                       if (player.winStreak > 0) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: AppColors.streak.withAlpha(25),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.local_fire_department,
+                        const SizedBox(width: 6),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.local_fire_department,
+                              color: AppColors.streak,
+                              size: 12,
+                            ),
+                            Text(
+                              '${player.winStreak}',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
                                 color: AppColors.streak,
-                                size: 13,
                               ),
-                              const SizedBox(width: 2),
-                              Text(
-                                '${player.winStreak}',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.streak,
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ],
                     ],
@@ -236,7 +264,7 @@ class DuolingoRankRow extends StatelessWidget {
               ),
             ),
 
-            // Elo Score nổi bật
+            // Elo Score
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -244,7 +272,7 @@ class DuolingoRankRow extends StatelessWidget {
                 Text(
                   '$elo',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.w800,
                     color: isCurrentUser ? AppColors.primary : AppColors.text,
                     fontFeatures: const [FontFeature.tabularFigures()],
@@ -253,9 +281,9 @@ class DuolingoRankRow extends StatelessWidget {
                 const Text(
                   'Elo',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF9E9E9E),
+                    color: AppColors.muted,
                   ),
                 ),
               ],

@@ -72,8 +72,8 @@ void main() {
       expect(find.text('Tất cả'), findsOneWidget);
       expect(find.text('Quanh bạn (±5)'), findsOneWidget);
 
-      // Check Duolingo Promotion line
-      expect(find.text('KHU VỰC THĂNG HẠNG (TOP 3)'), findsOneWidget);
+      // Check Top players at court line
+      expect(find.text('Top tay vợt tại sân'), findsOneWidget);
 
       // Check rows rendered
       expect(find.byType(DuolingoRankRow), findsWidgets);
