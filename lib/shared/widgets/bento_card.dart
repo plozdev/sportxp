@@ -4,16 +4,22 @@ import '../../core/theme/app_theme.dart';
 class BentoCard extends StatelessWidget {
   const BentoCard({super.key, required this.child});
   final Widget child;
+
   @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(24),
-    decoration: BoxDecoration(
-      color: AppColors.surface,
+  Widget build(BuildContext context) => Material(
+    color: AppColors.surface,
+    shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AppTokens.radius),
-      border: Border.all(color: AppColors.border),
+      side: const BorderSide(color: AppColors.border),
     ),
-    child: child,
+    clipBehavior: Clip.antiAlias,
+    child: SizedBox(
+      width: double.infinity,
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: child,
+      ),
+    ),
   );
 }
 

@@ -320,11 +320,15 @@ class _AthleteHeaderCard extends StatelessWidget {
                           color: AppColors.muted,
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          'Tham gia ${player.memberSinceFormatted}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.muted,
+                        Expanded(
+                          child: Text(
+                            'Tham gia ${player.memberSinceFormatted}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.muted,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -387,45 +391,52 @@ class _AthleteHeaderCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'CHỈ SỐ ELO',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.0,
-                            color: AppColors.muted,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'CHỈ SỐ ELO',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.0,
+                              color: AppColors.muted,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
-                          children: [
-                            Text(
-                              player.eloRating?.toString() ?? '—',
-                              style: AppTokens.metric.copyWith(
-                                fontSize: 34,
-                                color: isCalibrated
-                                    ? AppColors.primary
-                                    : AppColors.streak,
-                                height: 1.0,
+                          const SizedBox(height: 4),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
+                              Text(
+                                player.eloRating?.toString() ?? '—',
+                                style: AppTokens.metric.copyWith(
+                                  fontSize: 34,
+                                  color: isCalibrated
+                                      ? AppColors.primary
+                                      : AppColors.streak,
+                                  height: 1.0,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              isCalibrated ? 'Điểm kỹ năng' : 'Điểm tạm tính',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.muted,
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  isCalibrated ? 'Điểm kỹ năng' : 'Điểm tạm tính',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.muted,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     // Huy hiệu cấp bậc hoặc trạng thái phân hạng
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -636,13 +647,17 @@ class _PerformanceMetricsCard extends StatelessWidget {
                         color: AppColors.streak,
                       ),
                       const SizedBox(width: 6),
-                      Text(
-                        'CHUỖI THẮNG',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.8,
-                          color: AppColors.streak.withValues(alpha: 0.9),
+                      Flexible(
+                        child: Text(
+                          'CHUỖI THẮNG',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.8,
+                            color: AppColors.streak.withValues(alpha: 0.9),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -666,7 +681,7 @@ class _PerformanceMetricsCard extends StatelessWidget {
             // Đường kẻ ngăn cách dọc
             Container(
               width: 1,
-              margin: const EdgeInsets.symmetric(horizontal: 16),
+              margin: const EdgeInsets.symmetric(horizontal: 12),
               color: AppColors.border,
             ),
             // Cột 2: Điểm uy tín
@@ -682,13 +697,17 @@ class _PerformanceMetricsCard extends StatelessWidget {
                         color: AppColors.primary,
                       ),
                       SizedBox(width: 6),
-                      Text(
-                        'ĐIỂM UY TÍN',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.8,
-                          color: AppColors.primary,
+                      Flexible(
+                        child: Text(
+                          'ĐIỂM UY TÍN',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.8,
+                            color: AppColors.primary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
