@@ -53,6 +53,7 @@ class _SportXpShellState extends State<SportXpShell> {
   );
   MockRoomRepository? _sandbox;
   MockActivityRepository? _activities;
+  MockLeaderboardRepository? _mockLeaderboard;
   bool get _managed => _mockRooms || _roomsV2;
   RoomRepository get _roomRepository =>
       _mockRooms ? _sandbox! : ManagedRoomRepository(widget.client!);
@@ -62,11 +63,13 @@ class _SportXpShellState extends State<SportXpShell> {
     if (id == null) {
       _sandbox = null;
       _activities = null;
+      _mockLeaderboard = null;
       return;
     }
     if (_sandbox?.userId != id) {
       _sandbox = MockRoomRepository(userId: id);
       _activities = MockActivityRepository(_sandbox!);
+      _mockLeaderboard = MockLeaderboardRepository(_sandbox!);
     }
   }
 
@@ -222,7 +225,10 @@ class _SportXpShellState extends State<SportXpShell> {
                 ),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.border,
                     borderRadius: BorderRadius.circular(6),
@@ -501,6 +507,25 @@ class _SportXpShellState extends State<SportXpShell> {
           ],
         ],
       ),
+      actions: [
+        IconButton(
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Không có thông báo mới.'),
+                duration: Duration(seconds: 1),
+              ),
+            );
+          },
+          icon: const Icon(Icons.notifications_none_rounded, size: 22),
+          tooltip: 'Thông báo',
+        ),
+        IconButton(
+          onPressed: _refresh,
+          icon: const Icon(Icons.refresh_rounded, size: 20),
+          tooltip: 'Làm mới',
+        ),
+      ],
     ),
     body: SafeArea(
       child: IndexedStack(
@@ -536,10 +561,8 @@ class _SportXpShellState extends State<SportXpShell> {
                 ),
           _mockRooms && _sandbox != null
               ? LeaderboardPage(
-                  repository: MockLeaderboardRepository(_sandbox!),
-                  players: Future.value(
-                    MockLeaderboardRepository(_sandbox!).players(),
-                  ),
+                  repository: _mockLeaderboard,
+                  refreshToken: _roomRefresh,
                   onRefresh: _refreshSandbox,
                   isMock: true,
                   selectedPlayerId: _sandbox!.actorId,
@@ -565,6 +588,9 @@ class _SportXpShellState extends State<SportXpShell> {
             repository: widget.client != null
                 ? ProfileRepository(widget.client!)
                 : null,
+            activityRepository: _activities,
+            roomRepository: _sandbox,
+            refreshToken: _roomRefresh,
           ),
         ],
       ),
@@ -580,7 +606,7 @@ class _SportXpShellState extends State<SportXpShell> {
       selectedIndex: _index,
       onDestinationSelected: (value) => setState(() {
         _index = value;
-        _reload();
+        _roomRefresh++;
       }),
       destinations: const [
         NavigationDestination(
