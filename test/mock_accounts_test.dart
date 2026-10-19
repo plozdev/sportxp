@@ -54,7 +54,10 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Đổi tài khoản giả lập'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('account-linh')));
+      final account = find.byKey(const ValueKey('account-linh'));
+      await tester.ensureVisible(account);
+      await tester.pumpAndSettle();
+      await tester.tap(account.hitTestable());
       await tester.pumpAndSettle();
       expect(find.textContaining('Đang thử: Linh'), findsOneWidget);
       expect(client.auth.currentUser!.id, userId);
