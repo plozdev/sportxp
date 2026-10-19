@@ -69,10 +69,8 @@ Widget host(
   ),
 );
 
-Future<void> choose(WidgetTester tester, int question, int answer) async {
-  final target = find.text(
-    OnboardingQuiz.questions[question].choices[answer].label,
-  );
+Future<void> tapVisibleText(WidgetTester tester, String text) async {
+  final target = find.text(text);
   await tester.scrollUntilVisible(
     target,
     160,
@@ -80,15 +78,24 @@ Future<void> choose(WidgetTester tester, int question, int answer) async {
   );
   await Scrollable.ensureVisible(tester.element(target), alignment: .2);
   await tester.pumpAndSettle();
-  await tester.tap(target);
+  await tester.tap(target.hitTestable());
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 200));
   await tester.pumpAndSettle();
 }
 
+Future<void> choose(WidgetTester tester, int question, int answer) =>
+    tapVisibleText(
+      tester,
+      OnboardingQuiz.questions[question].choices[answer].label,
+    );
+
 void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
+    if (!const bool.fromEnvironment('TEST_SDK_FONTS', defaultValue: true)) {
+      return;
+    }
     try {
       final sdk =
           Platform.environment['FLUTTER_ROOT'] ??
@@ -197,23 +204,14 @@ void main() {
       expect(find.byKey(const ValueKey('question-1')), findsOneWidget);
       expect(repo.answers, [2]);
       repo.fail = false;
-      await tester.scrollUntilVisible(
-        find.text('Lưu lại câu trả lời'),
-        160,
-        scrollable: find.byType(Scrollable).last,
-      );
-      await tester.tap(find.text('Lưu lại câu trả lời'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
-      await tester.pumpAndSettle();
+      await tapVisibleText(tester, 'Lưu lại câu trả lời');
       expect(find.text('Bước 3/5'), findsOneWidget);
       // Recreate the page with server-persisted progress.
       await tester.pumpWidget(const SizedBox());
       await tester.pumpWidget(host(repo));
       await tester.pumpAndSettle();
       expect(find.text('Bước 3/5'), findsOneWidget);
-      await tester.tap(find.text('Câu trước'));
-      await tester.pumpAndSettle();
+      await tapVisibleText(tester, 'Câu trước');
       await choose(tester, 1, 0);
       expect(repo.answers, [2, 0]);
       expect(find.text('Bước 3/5'), findsOneWidget);
@@ -234,12 +232,7 @@ void main() {
       expect(find.text('Unverified · Chưa xác minh'), findsOneWidget);
       expect(find.text('Hoàng Nguyễn'), findsOneWidget);
       expect(repo.saves, 5);
-      await tester.scrollUntilVisible(
-        find.text('BẮT ĐẦU LÊN SÂN'),
-        160,
-        scrollable: find.byType(Scrollable).last,
-      );
-      await tester.tap(find.text('BẮT ĐẦU LÊN SÂN'));
+      await tapVisibleText(tester, 'BẮT ĐẦU LÊN SÂN');
       expect(finished, true);
       expect(tester.takeException(), isNull);
     },
@@ -259,6 +252,7 @@ void main() {
     addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     final repo = FakeOnboardingRepository();
     await tester.pumpWidget(host(repo));
+    expect(tester.takeException(), isNull);
     for (var q = 0; q < 5; q++) {
       await choose(tester, q, 0);
       expect(tester.takeException(), isNull);
@@ -370,13 +364,7 @@ void main() {
         await choose(tester, q, 0);
       }
       expect(find.text('480'), findsOneWidget);
-      await tester.scrollUntilVisible(
-        find.text('BẮT ĐẦU LÊN SÂN'),
-        160,
-        scrollable: find.byType(Scrollable).last,
-      );
-      await tester.tap(find.text('BẮT ĐẦU LÊN SÂN'));
-      await tester.pumpAndSettle();
+      await tapVisibleText(tester, 'BẮT ĐẦU LÊN SÂN');
       expect(find.text('MAIN APP'), findsOneWidget);
       // A restored completed session must skip the quiz.
       await tester.pumpWidget(const SizedBox());
