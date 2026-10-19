@@ -89,32 +89,49 @@ Future<void> choose(WidgetTester tester, int question, int answer) async {
 void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
-    final sdk =
-        Platform.environment['FLUTTER_ROOT'] ??
-        File(Platform.resolvedExecutable)
-            .parent
-            .parent
-            .parent
-            .parent
-            .parent
-            .parent
-            .path;
-    final fonts = '$sdk/bin/cache/artifacts/material_fonts';
-    final font = FontLoader('Roboto');
-    for (final weight in ['regular', 'medium', 'bold', 'black']) {
-      font.addFont(
-        File('$fonts/roboto-$weight.ttf')
-            .readAsBytes()
-            .then(ByteData.sublistView),
-      );
+    try {
+      final sdk =
+          Platform.environment['FLUTTER_ROOT'] ??
+          File(Platform.resolvedExecutable)
+              .parent
+              .parent
+              .parent
+              .parent
+              .parent
+              .parent
+              .path;
+      final fonts = '$sdk/bin/cache/artifacts/material_fonts';
+      final dir = Directory(fonts);
+      if (dir.existsSync()) {
+        final font = FontLoader('Roboto');
+        var loadedRoboto = false;
+        for (final weight in ['regular', 'medium', 'bold', 'black']) {
+          File file = File('$fonts/roboto-$weight.ttf');
+          if (!file.existsSync()) {
+            file = File('$fonts/Roboto-$weight.ttf');
+          }
+          if (file.existsSync()) {
+            font.addFont(file.readAsBytes().then(ByteData.sublistView));
+            loadedRoboto = true;
+          }
+        }
+        if (loadedRoboto) {
+          await font.load();
+        }
+
+        File iconsFile = File('$fonts/materialicons-regular.otf');
+        if (!iconsFile.existsSync()) {
+          iconsFile = File('$fonts/MaterialIcons-Regular.otf');
+        }
+        if (iconsFile.existsSync()) {
+          await (FontLoader('MaterialIcons')
+                ..addFont(iconsFile.readAsBytes().then(ByteData.sublistView)))
+              .load();
+        }
+      }
+    } catch (_) {
+      // Font artifacts may not be cached in headless CI environments.
     }
-    await font.load();
-    await (FontLoader('MaterialIcons')..addFont(
-          File('$fonts/materialicons-regular.otf')
-              .readAsBytes()
-              .then(ByteData.sublistView),
-        ))
-        .load();
   });
   test('All 768 answer combinations respect 300..850 and exact scoring', () {
     var count = 0;

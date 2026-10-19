@@ -13,31 +13,48 @@ import 'package:sport_xp_4/features/profile/presentation/widgets/passport_sheet.
 void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
-    final sdk =
-        Platform.environment['FLUTTER_ROOT'] ??
-        File(Platform.resolvedExecutable)
-            .parent
-            .parent
-            .parent
-            .parent
-            .parent
-            .parent
-            .path;
-    final loader = FontLoader('Roboto');
-    for (final weight in ['regular', 'medium', 'bold', 'black']) {
-      loader.addFont(
-        File('$sdk/bin/cache/artifacts/material_fonts/roboto-$weight.ttf')
-            .readAsBytes()
-            .then(ByteData.sublistView),
-      );
+    try {
+      final sdk =
+          Platform.environment['FLUTTER_ROOT'] ??
+          File(Platform.resolvedExecutable)
+              .parent
+              .parent
+              .parent
+              .parent
+              .parent
+              .parent
+              .path;
+      final dir = Directory('$sdk/bin/cache/artifacts/material_fonts');
+      if (dir.existsSync()) {
+        final loader = FontLoader('Roboto');
+        var loadedRoboto = false;
+        for (final weight in ['regular', 'medium', 'bold', 'black']) {
+          File file = File('${dir.path}/roboto-$weight.ttf');
+          if (!file.existsSync()) {
+            file = File('${dir.path}/Roboto-$weight.ttf');
+          }
+          if (file.existsSync()) {
+            loader.addFont(file.readAsBytes().then(ByteData.sublistView));
+            loadedRoboto = true;
+          }
+        }
+        if (loadedRoboto) {
+          await loader.load();
+        }
+
+        File iconsFile = File('${dir.path}/materialicons-regular.otf');
+        if (!iconsFile.existsSync()) {
+          iconsFile = File('${dir.path}/MaterialIcons-Regular.otf');
+        }
+        if (iconsFile.existsSync()) {
+          await (FontLoader('MaterialIcons')
+                ..addFont(iconsFile.readAsBytes().then(ByteData.sublistView)))
+              .load();
+        }
+      }
+    } catch (_) {
+      // Font artifacts may not be cached in headless CI environments.
     }
-    await loader.load();
-    await (FontLoader('MaterialIcons')..addFont(
-          File(
-            '$sdk/bin/cache/artifacts/material_fonts/materialicons-regular.otf',
-          ).readAsBytes().then(ByteData.sublistView),
-        ))
-        .load();
   });
   testWidgets('Real passport QR fits small phones at 200 percent text', (
     tester,
