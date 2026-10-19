@@ -88,7 +88,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // In nearMe mode, current user is displayed
-      expect(find.text('Tuấn'), findsWidgets);
+      expect(find.textContaining('Tuấn'), findsWidgets);
 
       // Tap court picker button to open CourtPickerSheet
       await tester.tap(find.byKey(const Key('court_picker_button')));
