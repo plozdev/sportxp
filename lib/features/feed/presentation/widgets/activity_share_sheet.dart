@@ -179,8 +179,8 @@ class ActivityShareSheet extends StatelessWidget {
 
                 const SizedBox(height: 12),
 
-                // Graphic court visual
-                BadmintonCourtGraphic(post: post, height: 110),
+                // Graphic athletic visual
+                AthleticVisualGraphic(post: post, height: 120),
 
                 const SizedBox(height: 12),
 
@@ -217,6 +217,65 @@ class ActivityShareSheet extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
+
+                const SizedBox(height: 10),
+
+                // Athletic Metrics Strip
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      if (post.sportType == 'running') ...[
+                        _ShareMetric(
+                          label: 'QUÃNG ĐƯỜNG',
+                          value: '${post.distanceKm != null ? post.distanceKm!.toStringAsFixed(2) : "5.20"} km',
+                        ),
+                        _ShareMetric(
+                          label: 'PACE',
+                          value: '${post.pace ?? "5:26"} /km',
+                        ),
+                        _ShareMetric(
+                          label: 'THỜI GIAN',
+                          value: '${post.durationMinutes ?? 28}m',
+                        ),
+                      ] else if (post.sportType == 'workout') ...[
+                        _ShareMetric(
+                          label: 'THỜI GIAN',
+                          value: '${post.durationMinutes ?? 45}m',
+                        ),
+                        _ShareMetric(
+                          label: 'TIÊU HAO',
+                          value: '${post.calories ?? 410} kcal',
+                        ),
+                        _ShareMetric(
+                          label: 'NHỊP TIM',
+                          value: '${post.avgHeartRate ?? 140} bpm',
+                        ),
+                      ] else ...[
+                        _ShareMetric(
+                          label: 'THỜI GIAN',
+                          value: '${post.durationMinutes ?? 75}m',
+                        ),
+                        _ShareMetric(
+                          label: 'TIÊU HAO',
+                          value: '${post.calories ?? 480} kcal',
+                        ),
+                        _ShareMetric(
+                          label: isPersonal ? 'KẾT QUẢ' : 'TỔNG SET',
+                          value: isPersonal
+                              ? '${wins}W - ${losses}L'
+                              : '${stats.confirmed}/${stats.total}',
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -288,3 +347,36 @@ class ActivityShareSheet extends StatelessWidget {
     );
   }
 }
+
+class _ShareMetric extends StatelessWidget {
+  const _ShareMetric({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.6,
+            color: AppColors.muted,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            color: AppColors.text,
+          ),
+        ),
+      ],
+    );
+  }
+}
+

@@ -58,10 +58,15 @@ void main() {
       expect(client.auth.currentUser!.id, userId);
       await tester.tap(find.text('Trang chủ'));
       await tester.pumpAndSettle();
-      expect(find.text('Hoạt động chờ chia sẻ (1)'), findsOneWidget);
+      expect(find.textContaining('Hôm nay cuối cùng'), findsOneWidget);
       await tester.tap(find.text('Xếp hạng'));
       await tester.pumpAndSettle();
       expect(find.textContaining('BẢNG XẾP HẠNG GIẢ LẬP'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Bảo · giả lập'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.text('Bảo · giả lập'), findsOneWidget);
       expect(
         queries.every((q) => q.containsKey('id')),

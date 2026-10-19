@@ -14,14 +14,28 @@ class _Post {
   int version = 1;
   bool deleted = false;
   final Set<String> likes = {};
+  String sportType = 'badminton';
+  int? durationMinutes;
+  int? calories;
+  int? avgHeartRate;
+  int? maxHeartRate;
+  double? distanceKm;
+  String? pace;
+  String? deviceSource;
+  List<String> matchScores = const [];
+  int commentCount = 0;
 }
 
 /// Owns post content, not match results. Summary is derived on every read so a
 /// late confirmation updates all related posts without overwriting captions.
 class MockActivityRepository implements ActivityRepository {
-  MockActivityRepository(this.source) : _generation = source.generation;
+  factory MockActivityRepository(ActivityLogSource source) =>
+      _instances[source] ??= MockActivityRepository._(source);
+  MockActivityRepository._(this.source);
+  // Every route must share posts with Home, not create its own detached store.
+  static final _instances = Expando<MockActivityRepository>();
   final ActivityLogSource source;
-  int _generation;
+  int _generation = -1;
   final Map<String, _Post> _posts = {};
   final Map<String, String> _receipts = {};
   void _sync() {
@@ -29,19 +43,247 @@ class MockActivityRepository implements ActivityRepository {
       _posts.clear();
       _receipts.clear();
       _generation = source.generation;
+      _seedInitialActivities();
     }
+    // Also ensure any new completed rooms dynamically get posts
     for (final log in source.activityLogs()) {
-      if (log.players.contains(source.actorId)) {
-        _ensure(log, ActivityKind.personal);
+      for (final p in log.players) {
+        _ensure(log, p, ActivityKind.personal);
       }
-      if (log.hostId == source.actorId) _ensure(log, ActivityKind.hostSummary);
+      _ensure(log, log.hostId, ActivityKind.hostSummary);
     }
   }
 
-  void _ensure(ActivityLog log, ActivityKind kind) {
-    final id = '${log.roomId}:${source.actorId}:${kind.name}';
+  void _seedInitialActivities() {
+    final logs = {for (final log in source.activityLogs()) log.roomId: log};
+
+    // 1. Linh smash (Court 0 Đào Duy Anh, 2 hours ago)
+    _seedPost(
+      roomId: 'room-linh-smash',
+      authorId: 'linh',
+      kind: ActivityKind.personal,
+      caption: 'Hôm nay cuối cùng cũng đỡ được smash của Minh 😅',
+      audience: ActivityAudience.friends,
+      likes: {source.ownerId, 'minh', 'an', 'bao'},
+      hoursAgo: 2,
+      logs: logs,
+      sportType: 'badminton',
+      durationMinutes: 105,
+      calories: 580,
+      avgHeartRate: 148,
+      maxHeartRate: 178,
+      deviceSource: 'Apple Watch Ultra 2',
+      matchScores: ['21-19', '21-18', '19-21', '22-20'],
+      commentCount: 4,
+    );
+
+    // 2. Minh running (Conditioning 5.2km, 4 hours ago)
+    _seedPost(
+      roomId: 'room-minh-running',
+      authorId: 'minh',
+      kind: ActivityKind.personal,
+      caption: '5km chạy thả lỏng phục hồi sau buổi cầu hôm qua. Chân cẳng đã nhẹ hơn nhiều 🏃💨',
+      audience: ActivityAudience.friends,
+      likes: {source.ownerId, 'linh', 'bao'},
+      hoursAgo: 4,
+      logs: logs,
+      sportType: 'running',
+      distanceKm: 5.2,
+      pace: '5:26',
+      durationMinutes: 28,
+      calories: 365,
+      avgHeartRate: 152,
+      maxHeartRate: 168,
+      deviceSource: 'Garmin Forerunner 965',
+      commentCount: 3,
+    );
+
+    // 3. User comeback (Court 1 Bình Thạnh, 5 hours ago)
+    _seedPost(
+      roomId: 'room-user-comeback',
+      authorId: source.ownerId,
+      kind: ActivityKind.personal,
+      caption: 'Set cuối kịch tính thở không ra hơi nhưng vẫn lội ngược dòng 24-22 🔥',
+      audience: ActivityAudience.friends,
+      likes: {'linh', 'minh', 'an'},
+      hoursAgo: 5,
+      logs: logs,
+      sportType: 'badminton',
+      durationMinutes: 90,
+      calories: 520,
+      avgHeartRate: 155,
+      maxHeartRate: 182,
+      deviceSource: 'Apple Watch Series 9',
+      matchScores: ['19-21', '21-18', '24-22'],
+      commentCount: 5,
+    );
+
+    // 4. Bảo conditioning workout (45 mins footwork, 10 hours ago)
+    _seedPost(
+      roomId: 'room-bao-workout',
+      authorId: 'bao',
+      kind: ActivityKind.personal,
+      caption: '45 phút ép di chuyển 6 góc sân + nhảy dây 1000 cái. Mồ hôi ướt đẫm áo 💦',
+      audience: ActivityAudience.friends,
+      likes: {'minh', 'linh', source.ownerId},
+      hoursAgo: 10,
+      logs: logs,
+      sportType: 'workout',
+      durationMinutes: 45,
+      calories: 410,
+      avgHeartRate: 140,
+      maxHeartRate: 165,
+      deviceSource: 'WHOOP 4.0',
+      commentCount: 2,
+    );
+
+    // 5. Minh smash defeat (Court 2 Thủ Đức, 18 hours ago)
+    _seedPost(
+      roomId: 'room-minh-smash',
+      authorId: 'minh',
+      kind: ActivityKind.personal,
+      caption: 'Bảo hôm nay smash cháy quá, đập quả nào cắm quả đó 🏸 Chịu thua tâm phục khẩu phục!',
+      audience: ActivityAudience.friends,
+      likes: {'bao', 'linh', 'an', source.ownerId},
+      hoursAgo: 18,
+      logs: logs,
+      sportType: 'badminton',
+      durationMinutes: 80,
+      calories: 490,
+      avgHeartRate: 146,
+      maxHeartRate: 174,
+      deviceSource: 'Garmin Forerunner 965',
+      matchScores: ['21-18', '16-21', '19-21', '21-19'],
+      commentCount: 3,
+    );
+
+    // 6. Host Linh recap (Court 0 Đào Duy Anh, 24 hours ago)
+    _seedPost(
+      roomId: 'room-host-linh-recap',
+      authorId: 'linh',
+      kind: ActivityKind.hostSummary,
+      caption: 'Tổng kết buổi sinh hoạt CLB Thứ Bảy: 5 tay vợt, 5 set đấu căng thẳng từ 8h sáng tới trưa. Cảm ơn cả nhà đã tới đúng giờ!',
+      audience: ActivityAudience.friends,
+      likes: {'minh', 'bao', 'an', source.ownerId},
+      hoursAgo: 24,
+      logs: logs,
+      sportType: 'badminton',
+      durationMinutes: 180,
+      calories: 820,
+      avgHeartRate: 135,
+      maxHeartRate: 169,
+      deviceSource: 'SportXP Club Tracker',
+      matchScores: ['21-15', '21-17', '18-21', '21-19', '21-16'],
+      commentCount: 7,
+    );
+
+    // 7. An test vợt (Court 1 Bình Thạnh, 48 hours ago, 1 pending match)
+    _seedPost(
+      roomId: 'room-an-pending',
+      authorId: 'an',
+      kind: ActivityKind.personal,
+      caption: 'Buổi đầu tiên thử nghiệm vợt mới, cảm giác cầu thoát tay hơn hẳn. Minh nhớ vào duyệt kết quả set 2 nha!',
+      audience: ActivityAudience.friends,
+      likes: {source.ownerId, 'linh'},
+      hoursAgo: 48,
+      logs: logs,
+      sportType: 'badminton',
+      durationMinutes: 65,
+      calories: 380,
+      avgHeartRate: 138,
+      maxHeartRate: 162,
+      deviceSource: 'Galaxy Watch 6',
+      matchScores: ['21-16', '18-21', '21-19'],
+      commentCount: 2,
+    );
+
+    // 8. User private practice (Court 2 Thủ Đức, 72 hours ago, Only me)
+    _seedPost(
+      roomId: 'room-user-private',
+      authorId: source.ownerId,
+      kind: ActivityKind.personal,
+      caption: 'Tự ghi chép buổi tập bổ trợ di chuyển chân và đập cầu góc xa. Còn hụt hơi cuối set.',
+      audience: ActivityAudience.onlyMe,
+      likes: {},
+      hoursAgo: 72,
+      logs: logs,
+      sportType: 'badminton',
+      durationMinutes: 60,
+      calories: 350,
+      avgHeartRate: 130,
+      maxHeartRate: 155,
+      deviceSource: 'Apple Watch Series 9',
+      matchScores: ['15-21', '18-21'],
+      commentCount: 0,
+    );
+
+    // 9. Bảo pro check (Court 0 Đào Duy Anh, 96 hours ago)
+    _seedPost(
+      roomId: 'room-bao-pro',
+      authorId: 'bao',
+      kind: ActivityKind.personal,
+      caption: 'Giao lưu kiểm tra phong độ trước thềm giải đấu tháng tới. Các bạn trẻ dạo này cổ tay dẻo quá 🚀',
+      audience: ActivityAudience.friends,
+      likes: {'linh', 'minh', 'an', source.ownerId},
+      hoursAgo: 96,
+      logs: logs,
+      sportType: 'badminton',
+      durationMinutes: 95,
+      calories: 610,
+      avgHeartRate: 156,
+      maxHeartRate: 184,
+      deviceSource: 'Apple Watch Ultra 2',
+      matchScores: ['21-18', '21-16', '21-14'],
+      commentCount: 6,
+    );
+  }
+
+  void _seedPost({
+    required String roomId,
+    required String authorId,
+    required ActivityKind kind,
+    required String caption,
+    required ActivityAudience audience,
+    required Set<String> likes,
+    required int hoursAgo,
+    required Map<String, ActivityLog> logs,
+    String sportType = 'badminton',
+    int? durationMinutes,
+    int? calories,
+    int? avgHeartRate,
+    int? maxHeartRate,
+    double? distanceKm,
+    String? pace,
+    String? deviceSource,
+    List<String> matchScores = const [],
+    int commentCount = 0,
+  }) {
+    final log = logs[roomId];
+    if (log == null) return;
+    final id = '$roomId:$authorId:${kind.name}';
+    final post = _Post(id, roomId, authorId, kind)
+      ..caption = caption
+      ..audience = audience
+      ..publishedAt = log.endedAt
+      ..likes.addAll(likes)
+      ..sportType = sportType
+      ..durationMinutes = durationMinutes
+      ..calories = calories
+      ..avgHeartRate = avgHeartRate
+      ..maxHeartRate = maxHeartRate
+      ..distanceKm = distanceKm
+      ..pace = pace
+      ..deviceSource = deviceSource
+      ..matchScores = matchScores
+      ..commentCount = commentCount;
+    post.publishedResults = _signature(post, log);
+    _posts[id] = post;
+  }
+
+  void _ensure(ActivityLog log, String authorId, ActivityKind kind) {
+    final id = '${log.roomId}:$authorId:${kind.name}';
     // Tombstones intentionally prevent a deleted post being recreated by sync.
-    _posts.putIfAbsent(id, () => _Post(id, log.roomId, source.actorId, kind));
+    _posts.putIfAbsent(id, () => _Post(id, log.roomId, authorId, kind));
   }
 
   ActivityLog? _log(_Post p) {
@@ -83,6 +325,16 @@ class MockActivityRepository implements ActivityRepository {
     final participant = log.participant(source.actorId);
     // Private session metadata is not automatically shared with author's friends.
     final redact = log.isPrivate && !participant;
+    final likedNames = p.likes
+        .where(
+          (id) =>
+              id == p.authorId ||
+              (!source.isBlocked(p.authorId, id) &&
+                  source.areFriends(p.authorId, id)),
+        )
+        .map((id) => source.actorNames[id] ?? id)
+        .toList();
+
     return ActivityView(
       id: p.id,
       roomId: p.roomId,
@@ -102,14 +354,8 @@ class MockActivityRepository implements ActivityRepository {
       isOwner: p.authorId == source.actorId,
       canOpenLog: participant,
       liked: p.likes.contains(source.actorId),
-      likeCount: p.likes
-          .where(
-            (id) =>
-                id == p.authorId ||
-                (!source.isBlocked(p.authorId, id) &&
-                    source.areFriends(p.authorId, id)),
-          )
-          .length,
+      likeCount: likedNames.length,
+      likedByNames: likedNames,
       totals: ActivityTotals(
         confirmed: confirmed.length,
         pending: matches.where((m) => m.status == 'PENDING').length,
@@ -118,6 +364,21 @@ class MockActivityRepository implements ActivityRepository {
         wins: personal ? wins : null,
         losses: personal ? confirmed.length - wins : null,
       ),
+      sportType: p.sportType,
+      durationMinutes: p.durationMinutes ?? (p.sportType == 'badminton' ? 75 : null),
+      calories: p.calories ?? (p.sportType == 'badminton' ? 450 : null),
+      avgHeartRate: p.avgHeartRate ?? (p.sportType == 'badminton' ? 142 : null),
+      maxHeartRate: p.maxHeartRate ?? (p.sportType == 'badminton' ? 172 : null),
+      distanceKm: p.distanceKm,
+      pace: p.pace,
+      deviceSource: p.deviceSource ?? 'Apple Watch · HealthKit',
+      matchScores: p.matchScores.isNotEmpty
+          ? p.matchScores
+          : confirmed
+              .map((m) => m.score)
+              .where((s) => s.isNotEmpty)
+              .toList(),
+      commentCount: p.commentCount,
     );
   }
 
