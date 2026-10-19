@@ -1,0 +1,36 @@
+name: SportXP Flutter CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  quality_and_tests:
+    name: Code Quality & Automated Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Cài đặt Flutter SDK (kèm cache)
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      # 3. Tải packages dependencies
+      - name: Install dependencies
+        run: flutter pub get
+
+      # 4. Phân tích tĩnh (bắt unused imports, linter errors, dead code)
+      - name: Analyze code
+        run: flutter analyze
+
+      # 5. Chạy toàn bộ 15 test suites (+84 tests)
+      - name: Run automated tests
+        run: flutter test
