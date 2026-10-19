@@ -53,6 +53,7 @@ class _SportXpShellState extends State<SportXpShell> {
   );
   MockRoomRepository? _sandbox;
   MockActivityRepository? _activities;
+  MockLeaderboardRepository? _mockLeaderboard;
   bool get _managed => _mockRooms || _roomsV2;
   RoomRepository get _roomRepository =>
       _mockRooms ? _sandbox! : ManagedRoomRepository(widget.client!);
@@ -62,11 +63,13 @@ class _SportXpShellState extends State<SportXpShell> {
     if (id == null) {
       _sandbox = null;
       _activities = null;
+      _mockLeaderboard = null;
       return;
     }
     if (_sandbox?.userId != id) {
       _sandbox = MockRoomRepository(userId: id);
       _activities = MockActivityRepository(_sandbox!);
+      _mockLeaderboard = MockLeaderboardRepository(_sandbox!);
     }
   }
 
@@ -151,6 +154,7 @@ class _SportXpShellState extends State<SportXpShell> {
           ),
           for (final player in MockLeaderboardRepository(sandbox).players())
             ListTile(
+              key: ValueKey('account-${player.id}'),
               title: Text(player.displayName),
               subtitle: Text(
                 '${player.tierName} · ${player.eloRating} Elo${player.id == sandbox.userId ? ' · Tài khoản của tôi' : ''}',
@@ -222,7 +226,10 @@ class _SportXpShellState extends State<SportXpShell> {
                 ),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.border,
                     borderRadius: BorderRadius.circular(6),
@@ -462,45 +469,110 @@ class _SportXpShellState extends State<SportXpShell> {
     appBar: AppBar(
       title: Row(
         children: [
-          const Text('SPORTXP'),
+          const Text(
+            'SPORTXP',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.2,
+            ),
+          ),
           if (_mockRooms && _sandbox != null) ...[
             const SizedBox(width: 10),
             Flexible(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.science_outlined,
-                      size: 13,
-                      color: AppColors.streak,
+              child: InkWell(
+                onTap: () async {
+                  await showMockConnectionsSheet(
+                    context,
+                    _sandbox!,
+                    onChanged: () => setState(() => _reload()),
+                  );
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3.5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.35),
+                      width: 1,
                     ),
-                    const SizedBox(width: 5),
-                    Flexible(
-                      child: Text(
-                        'Vai: ${_sandbox!.people[_sandbox!.actorId] ?? _sandbox!.actorId}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.muted,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 16,
+                        height: 16,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.primary,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        child: Center(
+                          child: Text(
+                            (_sandbox!.people[_sandbox!.actorId] ??
+                                    _sandbox!.actorId)
+                                .substring(0, 1)
+                                .toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.background,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          _sandbox!.people[_sandbox!.actorId] ??
+                              _sandbox!.actorId,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.text,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 14,
+                        color: AppColors.muted,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ],
         ],
       ),
+      actions: [
+        IconButton(
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Không có thông báo mới.'),
+                duration: Duration(seconds: 1),
+              ),
+            );
+          },
+          icon: const Icon(Icons.notifications_none_rounded, size: 22),
+          tooltip: 'Thông báo',
+        ),
+        IconButton(
+          onPressed: _refresh,
+          icon: const Icon(Icons.refresh_rounded, size: 20),
+          tooltip: 'Làm mới',
+        ),
+      ],
     ),
     body: SafeArea(
       child: IndexedStack(
@@ -536,10 +608,8 @@ class _SportXpShellState extends State<SportXpShell> {
                 ),
           _mockRooms && _sandbox != null
               ? LeaderboardPage(
-                  repository: MockLeaderboardRepository(_sandbox!),
-                  players: Future.value(
-                    MockLeaderboardRepository(_sandbox!).players(),
-                  ),
+                  repository: _mockLeaderboard,
+                  refreshToken: _roomRefresh,
                   onRefresh: _refreshSandbox,
                   isMock: true,
                   selectedPlayerId: _sandbox!.actorId,
@@ -565,6 +635,9 @@ class _SportXpShellState extends State<SportXpShell> {
             repository: widget.client != null
                 ? ProfileRepository(widget.client!)
                 : null,
+            activityRepository: _activities,
+            roomRepository: _sandbox,
+            refreshToken: _roomRefresh,
           ),
         ],
       ),
@@ -580,7 +653,7 @@ class _SportXpShellState extends State<SportXpShell> {
       selectedIndex: _index,
       onDestinationSelected: (value) => setState(() {
         _index = value;
-        _reload();
+        _roomRefresh++;
       }),
       destinations: const [
         NavigationDestination(

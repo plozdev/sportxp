@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -12,6 +13,9 @@ import '../data/mock_room_repository.dart';
 import 'mock_room_controls.dart';
 import 'room_editor_page.dart';
 import 'widgets/room_ui_formatters.dart';
+import '../../feed/data/mock_activity_repository.dart';
+import '../../feed/domain/activity.dart';
+import '../../feed/presentation/activity_editor_page.dart';
 
 class RoomDetailPage extends StatefulWidget {
   const RoomDetailPage({
@@ -61,10 +65,71 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       await widget.repository.execute(_pending!);
       _pending = null;
       if (mounted) setState(_load);
+      if (action == 'finish' && mounted) {
+        _showPostSessionSummaryDialog();
+      }
     } catch (e) {
       if (mounted) setState(() => _error = roomFailure(e));
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _showPostSessionSummaryDialog() async {
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Row(
+          children: [
+            Icon(Icons.emoji_events_outlined, color: AppColors.primary),
+            SizedBox(width: 8),
+            Text('Tổng kết buổi chơi'),
+          ],
+        ),
+        content: const Text(
+          'Buổi chơi đã kết thúc thành công.\n\nBạn có muốn mở màn hình tổng kết để thêm caption và chọn chia sẻ hoạt động lên Bảng tin cùng bạn bè không?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Bỏ qua'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(context, true),
+            icon: const Icon(Icons.send_rounded, size: 16),
+            label: const Text('Thêm caption & Chia sẻ'),
+          ),
+        ],
+      ),
+    );
+
+    if (proceed == true && mounted && widget.repository is MockRoomRepository) {
+      final mock = widget.repository as MockRoomRepository;
+      final activities = MockActivityRepository(mock);
+      final drafts = await activities.drafts();
+      final matches = drafts.where((d) => d.roomId == widget.roomId).toList();
+      final draft =
+          matches.where((d) => d.kind == ActivityKind.personal).firstOrNull ??
+          matches.firstOrNull;
+      if (draft != null && mounted) {
+        await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                ActivityEditorPage(repository: activities, post: draft),
+          ),
+        );
+      }
+    } else if (proceed == false && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Bạn có thể mở lại buổi chơi từ Hồ sơ → Nhật ký thi đấu bất cứ lúc nào.',
+          ),
+          duration: Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -152,17 +217,23 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     if (isPrimary) {
       return SizedBox(
         width: double.infinity,
-        height: 50,
+        height: 48,
         child: FilledButton(
-          onPressed: _busy ? null : () => _execute(actionName, payload: payload),
+          onPressed: _busy
+              ? null
+              : () => _execute(actionName, payload: payload),
           style: FilledButton.styleFrom(
             backgroundColor: color ?? AppColors.primary,
-            foregroundColor: color == AppColors.streak ? Colors.black : AppColors.background,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            foregroundColor: color == AppColors.streak
+                ? Colors.black
+                : AppColors.background,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
           child: Text(
             label,
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
           ),
         ),
       );
@@ -175,7 +246,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         style: OutlinedButton.styleFrom(
           side: BorderSide(color: color ?? AppColors.border),
           foregroundColor: color ?? AppColors.text,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
         child: Text(label),
       ),
@@ -183,17 +256,17 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   }
 
   Widget _buildGroupHeader(IconData icon, String title) => Padding(
-    padding: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.only(bottom: 10),
     child: Row(
       children: [
-        Icon(icon, size: 16, color: AppColors.primary),
-        const SizedBox(width: 8),
+        Icon(icon, size: 15, color: AppColors.primary),
+        const SizedBox(width: 6),
         Text(
           title,
           style: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w800,
-            letterSpacing: 0.8,
+            letterSpacing: 0.6,
             color: AppColors.primary,
           ),
         ),
@@ -201,439 +274,421 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     ),
   );
 
-  Widget _buildOverviewCard(ManagedRoom room) {
-    final isPrivate = room.visibility == 'PRIVATE';
+  // KHOẢNG NHÌN ĐẦU: HERO CARD GỌN GÀNG (SÂN, GIỜ, PHÍ, CHỖ TRỐNG & HOST)
+  Widget _buildCompactHeroCard(ManagedRoom room) {
     final isCancelled = room.status == 'CANCELLED';
     final isInProgress = room.status == 'IN_PROGRESS';
-
-    return BentoCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Badges & Visibility row
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isCancelled
-                      ? AppColors.loss.withValues(alpha: 0.15)
-                      : isInProgress
-                      ? AppColors.primary.withValues(alpha: 0.15)
-                      : AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: isCancelled
-                        ? AppColors.loss.withValues(alpha: 0.5)
-                        : AppColors.primary.withValues(alpha: 0.4),
-                  ),
-                ),
-                child: Text(
-                  room.statusLabel,
-                  style: TextStyle(
-                    color: isCancelled ? AppColors.loss : AppColors.primary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isPrivate ? Icons.lock_outline : Icons.public,
-                      size: 13,
-                      color: AppColors.muted,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      isPrivate ? 'Phòng riêng bằng mã' : 'Kèo công khai',
-                      style: const TextStyle(fontSize: 11, color: AppColors.muted),
-                    ),
-                  ],
-                ),
-              ),
-              const Spacer(),
-              Text(
-                'v${room.revision}',
-                style: const TextStyle(fontSize: 11, color: AppColors.muted),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-
-          // Title
-          Text(
-            room.title,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.text,
-              height: 1.3,
-            ),
-          ),
-
-          // Personal Status Alert / Banner
-          if (room.isHost) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.stars_rounded, size: 16, color: AppColors.primary),
-                  SizedBox(width: 8),
-                  Text(
-                    'Bạn là Host của buổi chơi này',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ] else if (room.myStatus == 'REGISTERED') ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.check_circle, size: 16, color: AppColors.primary),
-                  SizedBox(width: 8),
-                  Text(
-                    'Bạn đã đăng ký tham gia buổi này',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ] else if (room.myStatus == 'WAITLIST') ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.streak.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.streak.withValues(alpha: 0.5)),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.hourglass_top_rounded, size: 16, color: AppColors.streak),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Bạn đang ở danh sách chờ; sẽ tự động lên chỗ nếu có người hủy.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.streak,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ] else if (room.myStatus == 'RECONFIRM') ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppColors.loss.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.loss.withValues(alpha: 0.5)),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.warning_amber_rounded, size: 18, color: AppColors.loss),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Điều kiện buổi chơi đã thay đổi. Chỗ vẫn được giữ nhưng bạn cần xác nhận lại lịch mới.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.loss,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  // Nhóm 1: Sân và thời gian
-  Widget _buildVenueAndTimeCard(ManagedRoom room) {
-    return BentoCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildGroupHeader(Icons.location_on_outlined, 'SÂN VÀ THỜI GIAN'),
-
-          // Court name & court label
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Padding(
-                padding: EdgeInsets.only(top: 2),
-                child: Icon(Icons.sports_tennis, size: 18, color: AppColors.primary),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      room.courtName,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.text,
-                      ),
-                    ),
-                    if (room.courtLabel.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.background,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
-                        ),
-                        child: Text(
-                          room.courtLabel.startsWith('Sân') ? room.courtLabel : 'Sân ${room.courtLabel}',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                    if (room.address.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(room.address, style: AppTokens.label),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Divider(height: 1, color: AppColors.border),
-          ),
-
-          // Time range formatted
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Padding(
-                padding: EdgeInsets.only(top: 2),
-                child: Icon(Icons.schedule, size: 18, color: AppColors.primary),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      RoomUiFormatters.dateRange(room.startsAt, room.endsAt),
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.text,
-                        fontFeatures: [FontFeature.tabularFigures()],
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Khung giờ địa phương • Có mặt trước 10 phút để khởi động',
-                      style: AppTokens.label,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Nhóm 2: Chỗ trống và trình độ
-  Widget _buildSlotsAndSkillCard(ManagedRoom room) {
     final available = (room.capacity - room.reserved).clamp(0, room.capacity);
 
-    return BentoCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildGroupHeader(Icons.groups_outlined, 'CHỖ TRỐNG VÀ TRÌNH ĐỘ'),
-
-          // Slots metric row
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('TÌNH TRẠNG CHỖ', style: AppTokens.label),
-                    const SizedBox(height: 4),
-                    Text(
-                      available > 0 ? 'CÒN $available CHỖ' : 'ĐÃ ĐỦ NGƯỜI',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: available > 0 ? AppColors.primary : AppColors.muted,
-                        letterSpacing: 0.5,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
+    return Material(
+      color: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTokens.radius),
+        side: BorderSide(
+          color: isInProgress
+              ? AppColors.primary.withValues(alpha: 0.6)
+              : AppColors.border,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Dòng huy hiệu: Trạng thái, Mã phòng, Badge của tôi
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isCancelled
+                        ? AppColors.loss.withValues(alpha: 0.15)
+                        : isInProgress
+                        ? AppColors.primary.withValues(alpha: 0.15)
+                        : AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: isCancelled
+                          ? AppColors.loss.withValues(alpha: 0.5)
+                          : AppColors.primary.withValues(alpha: 0.4),
                     ),
-                    Text(
-                      '${room.reserved}/${room.capacity} người chơi đã vào',
-                      style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                  ),
+                  child: Text(
+                    room.statusLabel,
+                    style: TextStyle(
+                      color: isCancelled ? AppColors.loss : AppColors.primary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11,
                     ),
-                  ],
+                  ),
                 ),
-              ),
-              Container(width: 1, height: 44, color: AppColors.border),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(width: 6),
+                // Mã phòng hiển thị rõ trong chi tiết như đề xuất
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text('YÊU CẦU TRÌNH ĐỘ', style: AppTokens.label),
-                      const SizedBox(height: 4),
+                      Icon(
+                        room.visibility == 'PRIVATE'
+                            ? Icons.lock_outline_rounded
+                            : Icons.tag_rounded,
+                        size: 12,
+                        color: AppColors.muted,
+                      ),
+                      const SizedBox(width: 4),
                       Text(
-                        RoomUiFormatters.skillRange(room.minElo, room.maxElo),
+                        '#${room.roomCode}',
                         style: const TextStyle(
-                          fontSize: 14,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: AppColors.text,
-                        ),
-                      ),
-                      Text(
-                        room.minElo <= 0 && room.maxElo >= 2000
-                            ? 'Giao lưu mở rộng'
-                            : '${room.minElo}–${room.maxElo} Elo',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.muted,
                           fontFeatures: [FontFeature.tabularFigures()],
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
-          ),
-
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Divider(height: 1, color: AppColors.border),
-          ),
-
-          // Host & participation mode
-          Row(
-            children: [
-              const Icon(Icons.person_pin_circle_outlined, size: 16, color: AppColors.muted),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Host: ${room.hostName} · ${room.hostPlays ? 'Có tham gia thi đấu' : 'Chỉ tổ chức (không chiếm slot)'}',
-                  style: const TextStyle(fontSize: 13, color: AppColors.text),
+                if (room.isHost) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'BẠN LÀ HOST',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ] else if (room.myStatus == 'REGISTERED') ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'ĐÃ VÀO',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ] else if (room.myStatus == 'WAITLIST') ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.streak.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'CHỜ CHỖ',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.streak,
+                      ),
+                    ),
+                  ),
+                ] else if (room.myStatus == 'RECONFIRM') ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.loss.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'CẦN XÁC NHẬN',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.loss,
+                      ),
+                    ),
+                  ),
+                ],
+                const Spacer(),
+                Text(
+                  'v${room.revision}',
+                  style: const TextStyle(fontSize: 11, color: AppColors.muted),
                 ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            // Tiêu đề kèo
+            Text(
+              room.title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.text,
+                height: 1.25,
               ),
-            ],
-          ),
-        ],
+            ),
+            const SizedBox(height: 10),
+
+            // 1. SÂN
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.place_outlined,
+                  size: 16,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        room.courtLabel.isNotEmpty
+                            ? '${room.courtName} • ${room.courtLabel}'
+                            : room.courtName,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.text,
+                        ),
+                      ),
+                      if (room.address.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(room.address, style: AppTokens.label),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // 2. GIỜ CHƠI
+            Row(
+              children: [
+                const Icon(
+                  Icons.schedule_rounded,
+                  size: 16,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    RoomUiFormatters.dateRange(room.startsAt, room.endsAt),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.text,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // 3. THÔNG SỐ CHÍNH (3 CỘT GỌN: CHỖ TRỐNG · TRÌNH ĐỘ · PHÍ)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                children: [
+                  // Chỗ trống
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('CHỖ TRỐNG', style: AppTokens.label),
+                        const SizedBox(height: 2),
+                        Text(
+                          available > 0
+                              ? 'Còn $available/${room.capacity}'
+                              : 'Đủ người',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: available > 0
+                                ? AppColors.primary
+                                : AppColors.muted,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(width: 1, height: 26, color: AppColors.border),
+
+                  // Trình độ
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('TRÌNH ĐỘ', style: AppTokens.label),
+                          const SizedBox(height: 2),
+                          Text(
+                            RoomUiFormatters.skillRange(
+                              room.minElo,
+                              room.maxElo,
+                            ),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.text,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Container(width: 1, height: 26, color: AppColors.border),
+
+                  // Chi phí
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('CHI PHÍ', style: AppTokens.label),
+                          const SizedBox(height: 2),
+                          Text(
+                            RoomUiFormatters.currency(room.fee),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primary,
+                              fontFeatures: [FontFeature.tabularFigures()],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Host info
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 9,
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                  child: Text(
+                    room.hostName.isNotEmpty
+                        ? room.hostName[0].toUpperCase()
+                        : 'H',
+                    style: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Host: ${room.hostName} · ${room.hostPlays ? 'Có tham gia' : 'Chỉ tổ chức'}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.muted,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  // Nhóm 3: Chi phí, hạn hủy và tình trạng đặt sân
-  Widget _buildPricingAndBookingCard(ManagedRoom room) {
+  // TIẾP PHÍA DƯỚI: ĐẶT SÂN, HẠN HỦY VÀ GHI CHÚ
+  Widget _buildBookingAndNotesCard(ManagedRoom room) {
     final isConfirmed = room.bookingStatus == 'HOST_CONFIRMED';
 
     return BentoCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildGroupHeader(Icons.payments_outlined, 'CHI PHÍ VÀ ĐẶT SÂN'),
+          _buildGroupHeader(Icons.info_outline_rounded, 'ĐẶT SÂN & HẠN HỦY'),
 
-          // Fee row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Chi phí dự kiến', style: TextStyle(fontSize: 14, color: AppColors.text)),
-              Text(
-                '${RoomUiFormatters.currency(room.fee)} / người',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.primary,
-                  fontFeatures: [FontFeature.tabularFigures()],
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          // Booking status
+          // Trạng thái đặt sân
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             decoration: BoxDecoration(
               color: AppColors.background,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(color: AppColors.border),
             ),
             child: Row(
               children: [
                 Icon(
                   isConfirmed ? Icons.verified_outlined : Icons.help_outline,
-                  size: 16,
+                  size: 15,
                   color: isConfirmed ? AppColors.primary : AppColors.muted,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     isConfirmed
-                        ? 'Host đã khai báo đặt sân (chưa qua sân xác thực)'
+                        ? 'Host đã khai báo đặt sân'
                         : 'Chưa xác nhận đặt sân',
                     style: TextStyle(
                       fontSize: 12,
-                      fontWeight: isConfirmed ? FontWeight.w600 : FontWeight.normal,
+                      fontWeight: isConfirmed
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                       color: isConfirmed ? AppColors.primary : AppColors.muted,
                     ),
                   ),
@@ -641,14 +696,17 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
               ],
             ),
           ),
+          const SizedBox(height: 8),
 
-          const SizedBox(height: 12),
-
-          // Cancellation deadline formatted
+          // Hạn hủy không phạt
           Row(
             children: [
-              const Icon(Icons.event_busy_outlined, size: 16, color: AppColors.muted),
-              const SizedBox(width: 8),
+              const Icon(
+                Icons.event_busy_outlined,
+                size: 15,
+                color: AppColors.muted,
+              ),
+              const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   'Hạn hủy không phạt: ${RoomUiFormatters.deadline(room.cancelBy)}',
@@ -658,47 +716,59 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             ],
           ),
 
-          // Notes if present
+          // Ghi chú từ host nếu có
           if (room.notes.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: AppColors.background,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: AppColors.border),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('GHI CHÚ TỪ HOST', style: AppTokens.label),
-                  const SizedBox(height: 4),
-                  Text(room.notes, style: const TextStyle(fontSize: 13, color: AppColors.text)),
+                  const SizedBox(height: 3),
+                  Text(
+                    room.notes,
+                    style: const TextStyle(fontSize: 12, color: AppColors.text),
+                  ),
                 ],
               ),
             ),
           ],
 
-          // Cancellation reason if present
+          // Lý do hủy nếu có
           if (room.cancellationReason != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: AppColors.loss.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.loss.withValues(alpha: 0.4)),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: AppColors.loss.withValues(alpha: 0.4),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('LÝ DO HỦY BUỔI', style: TextStyle(fontSize: 11, color: AppColors.loss, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
+                  const Text(
+                    'LÝ DO HỦY BUỔI',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.loss,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
                   Text(
                     room.cancellationReason!,
-                    style: const TextStyle(fontSize: 13, color: AppColors.loss),
+                    style: const TextStyle(fontSize: 12, color: AppColors.loss),
                   ),
                 ],
               ),
@@ -709,7 +779,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     );
   }
 
-  // Nhóm 4: Người tham gia
+  // TIẾP PHÍA DƯỚI: DANH SÁCH NGƯỜI CHƠI
   Widget _buildParticipantsCard(ManagedRoom room) {
     return BentoCard(
       child: Column(
@@ -721,10 +791,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           ),
           if (room.members.isEmpty)
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
+              padding: EdgeInsets.symmetric(vertical: 6),
               child: Text(
                 'Chưa có thành viên tham gia.',
-                style: TextStyle(color: AppColors.muted, fontSize: 13),
+                style: TextStyle(color: AppColors.muted, fontSize: 12),
               ),
             )
           else
@@ -746,27 +816,24 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     final isHostMember = role == 'HOST';
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          // Avatar with initial
           CircleAvatar(
-            radius: 18,
+            radius: 15,
             backgroundColor: isHostMember
                 ? AppColors.primary.withValues(alpha: 0.2)
                 : AppColors.background,
             child: Text(
               name.isNotEmpty ? name[0].toUpperCase() : '?',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 12,
                 fontWeight: FontWeight.bold,
                 color: isHostMember ? AppColors.primary : AppColors.text,
               ),
             ),
           ),
-          const SizedBox(width: 12),
-
-          // Name and details
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -777,14 +844,17 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                       name,
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
-                        fontSize: 14,
+                        fontSize: 13,
                         color: AppColors.text,
                       ),
                     ),
                     if (isHostMember) ...[
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1.5,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(4),
@@ -801,9 +871,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                     ],
                   ],
                 ),
-                const SizedBox(height: 2),
                 Text(
-                  '${status == 'REGISTERED' ? 'Đã vào' : status == 'WAITLIST' ? 'Danh sách chờ' : status} · ${isPlaying ? 'Có chơi' : 'Chỉ tổ chức'}${cancelKind == null ? '' : ' · $cancelKind'}',
+                  '${status == 'REGISTERED'
+                      ? 'Đã vào'
+                      : status == 'WAITLIST'
+                      ? 'Danh sách chờ'
+                      : status} · ${isPlaying ? 'Có chơi' : 'Chỉ tổ chức'}${cancelKind == null ? '' : ' · $cancelKind'}',
                   style: AppTokens.label,
                 ),
               ],
@@ -811,6 +884,221 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           ),
         ],
       ),
+    );
+  }
+
+  // CTA THAM GIA CỐ ĐỊNH Ở ĐÁY MÀN HÌNH (STICKY BOTTOM BAR)
+  Widget _buildStickyBottomBar(ManagedRoom room) {
+    final isRegistered = [
+      'REGISTERED',
+      'RECONFIRM',
+      'WAITLIST',
+    ].contains(room.myStatus);
+
+    Widget? content;
+
+    // Trường hợp 1: Người chơi chưa tham gia -> Nút Đăng ký / Chờ chỗ kèm hiển thị phí
+    if (room.canRegister && !room.isHost && !isRegistered) {
+      final isFull = room.reserved >= room.capacity;
+      content = Row(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('PHÍ THAM GIA', style: AppTokens.label),
+              Text(
+                '${RoomUiFormatters.currency(room.fee)}/người',
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: action(
+              isFull ? 'Vào danh sách chờ' : 'Đăng ký tham gia',
+              isFull ? 'waitlist' : 'join',
+              payload: {
+                'expected_revision': room.revision,
+                if (room.visibility == 'PRIVATE') 'room_code': room.roomCode,
+              },
+              isPrimary: true,
+              color: isFull ? AppColors.streak : AppColors.primary,
+            ),
+          ),
+        ],
+      );
+    }
+    // Trường hợp 2: Cần xác nhận điều kiện mới (RECONFIRM)
+    else if (room.canRegister && room.myStatus == 'RECONFIRM') {
+      content = Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _busy ? null : () => _leave(room),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.loss),
+                foregroundColor: AppColors.loss,
+                minimumSize: const Size(0, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'Từ chối',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 2,
+            child: action(
+              'Đồng ý điều kiện mới',
+              'reconfirm',
+              payload: {'expected_revision': room.revision},
+              isPrimary: true,
+            ),
+          ),
+        ],
+      );
+    }
+    // Trường hợp 3: Buổi đang diễn ra hoặc đã hoàn tất -> Vào xem trận đấu / Điểm danh
+    else if (widget.repository is RoomSessionRepository &&
+        (room.isHost || room.myStatus == 'REGISTERED') &&
+        ['IN_PROGRESS', 'COMPLETED'].contains(room.status)) {
+      content = Row(
+        children: [
+          Expanded(
+            child: FilledButton.icon(
+              onPressed: () =>
+                  Navigator.push<void>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => RoomSessionPage(
+                        repository: widget.repository as RoomSessionRepository,
+                        roomId: room.id,
+                      ),
+                    ),
+                  ).then((_) {
+                    if (mounted) setState(_load);
+                  }),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.background,
+                minimumSize: const Size(0, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.sports_tennis),
+              label: const Text(
+                'Trận đấu / Điểm danh',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+              ),
+            ),
+          ),
+          if (room.isHost && room.status == 'IN_PROGRESS') ...[
+            const SizedBox(width: 8),
+            OutlinedButton(
+              onPressed: _busy ? null : () => _execute('finish'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(0, 48),
+                side: const BorderSide(color: AppColors.border),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'Kết thúc',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ],
+      );
+    }
+    // Trường hợp 4: Host mở đăng ký buổi nháp
+    else if (room.isHost && room.status == 'DRAFT') {
+      content = action('Mở đăng ký', 'publish', isPrimary: true);
+    }
+    // Trường hợp 5: Host bắt đầu buổi chơi
+    else if (room.isHost &&
+        ['OPEN', 'FULL'].contains(room.status) &&
+        (!room.startsAt.isAfter(DateTime.now()) ||
+            widget.repository is MockRoomRepository)) {
+      content = action(
+        widget.repository is MockRoomRepository
+            ? 'Bắt đầu buổi chơi (mock cho phép sớm)'
+            : 'Bắt đầu buổi chơi',
+        'start',
+        isPrimary: true,
+      );
+    }
+    // Trường hợp 6: Đã đăng ký buổi sắp tới -> Có thể hủy đăng ký
+    else if (!room.isHost &&
+        isRegistered &&
+        ['OPEN', 'FULL'].contains(room.status)) {
+      content = Row(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('TRẠNG THÁI', style: AppTokens.label),
+              Text(
+                room.myStatus == 'WAITLIST' ? 'Danh sách chờ' : 'Đã tham gia',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: room.myStatus == 'WAITLIST'
+                      ? AppColors.streak
+                      : AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _busy ? null : () => _leave(room),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.loss),
+                foregroundColor: AppColors.loss,
+                minimumSize: const Size(0, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'Hủy đăng ký',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (content == null) return const SizedBox.shrink();
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        16,
+        10,
+        16,
+        10 + MediaQuery.of(context).padding.bottom,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: content,
     );
   }
 
@@ -827,6 +1115,15 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         ),
       ],
     ),
+    // CTA tham gia cố định ở đáy màn hình
+    bottomNavigationBar: FutureBuilder<ManagedRoom?>(
+      future: _room,
+      builder: (context, snapshot) {
+        final room = snapshot.data;
+        if (room == null) return const SizedBox.shrink();
+        return _buildStickyBottomBar(room);
+      },
+    ),
     body: AsyncPanel<ManagedRoom?>(
       future: _room,
       onRetry: () => setState(_load),
@@ -837,10 +1134,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           );
         }
 
-        final isRegistered = ['REGISTERED', 'RECONFIRM', 'WAITLIST'].contains(room.myStatus);
-
         return PageContent(
           children: [
+            // Controls giả lập cho mock
             MockRoomControls(
               repository: widget.repository,
               onChanged: () {
@@ -850,45 +1146,56 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
               },
             ),
 
-            // Overview Card
-            _buildOverviewCard(room),
+            // Khoảng nhìn đầu: Khối tổng quan tinh gọn (Sân, Giờ, Phí, Chỗ & Host)
+            _buildCompactHeroCard(room),
 
-            // Nhóm 1: Sân và thời gian
-            _buildVenueAndTimeCard(room),
+            // Tiếp phía dưới: Thông tin đặt sân, hạn hủy và ghi chú
+            _buildBookingAndNotesCard(room),
 
-            // Nhóm 2: Chỗ trống và trình độ
-            _buildSlotsAndSkillCard(room),
-
-            // Nhóm 3: Chi phí, hạn hủy và tình trạng đặt sân
-            _buildPricingAndBookingCard(room),
-
-            // Nhóm 4: Người tham gia
+            // Tiếp phía dưới: Người tham gia
             _buildParticipantsCard(room),
 
-            // Error notice if any
+            // Thông báo lỗi nếu có
             if (_error != null)
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: AppColors.loss.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.loss.withValues(alpha: 0.4)),
+                  border: Border.all(
+                    color: AppColors.loss.withValues(alpha: 0.4),
+                  ),
                 ),
-                child: Text(_error!, style: const TextStyle(color: AppColors.loss, fontSize: 13)),
+                child: Text(
+                  _error!,
+                  style: const TextStyle(color: AppColors.loss, fontSize: 13),
+                ),
               ),
 
             if (_busy) const LinearProgressIndicator(),
 
-            if (widget.repository is MockRoomRepository && room.status == 'COMPLETED')
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 4),
-                child: Text(
-                  'Buổi chơi đã kết thúc. Bạn có thể mở Trang chủ hoặc mục Lưu trữ để xem hoạt động và chia sẻ thẻ thành tích lên bảng tin.',
-                  style: TextStyle(fontSize: 12, color: AppColors.muted),
+            // Nút mở màn hình tổng kết & chia sẻ lên Bảng tin sau khi buổi đấu kết thúc
+            if (widget.repository is MockRoomRepository &&
+                room.status == 'COMPLETED')
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: FilledButton.tonalIcon(
+                  onPressed: _showPostSessionSummaryDialog,
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 44),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(Icons.share_rounded, size: 16),
+                  label: const Text(
+                    'Màn hình tổng kết & Chia sẻ lên Bảng tin',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
                 ),
               ),
 
-            // Action: Host xác nhận đặt sân
+            // Thao tác bổ trợ của Host (Xác nhận đặt sân, Sửa lịch, Hủy buổi)
             if (widget.repository is RoomSessionRepository && room.canEdit)
               action(
                 'Host xác nhận đã liên hệ đặt sân',
@@ -897,99 +1204,30 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                 isPrimary: false,
               ),
 
-            // Action: Trận đấu / Điểm danh (trong buổi đang diễn ra hoặc hoàn tất)
-            if (widget.repository is RoomSessionRepository &&
-                (room.isHost || room.myStatus == 'REGISTERED') &&
-                ['IN_PROGRESS', 'COMPLETED'].contains(room.status))
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: FilledButton.icon(
-                  onPressed: () => Navigator.push<void>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => RoomSessionPage(
-                        repository: widget.repository as RoomSessionRepository,
-                        roomId: room.id,
-                      ),
-                    ),
-                  ).then((_) {
-                    if (mounted) setState(_load);
-                  }),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: AppColors.background,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  icon: const Icon(Icons.sports_tennis),
-                  label: const Text(
-                    'Trận đấu / Điểm danh',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-                  ),
-                ),
-              ),
-
-            // Primary Registration Action Button
-            if (room.canRegister && !room.isHost && !isRegistered)
-              action(
-                room.reserved >= room.capacity
-                    ? 'Vào danh sách chờ'
-                    : 'Đăng ký tham gia',
-                room.reserved >= room.capacity ? 'waitlist' : 'join',
-                payload: {
-                  'expected_revision': room.revision,
-                  if (room.visibility == 'PRIVATE') 'room_code': room.roomCode,
-                },
-                isPrimary: true,
-                color: room.reserved >= room.capacity ? AppColors.streak : AppColors.primary,
-              ),
-
-            // Reconfirm Action Button
-            if (room.canRegister && room.myStatus == 'RECONFIRM')
-              action(
-                'Đồng ý điều kiện mới',
-                'reconfirm',
-                payload: {'expected_revision': room.revision},
-                isPrimary: true,
-                color: AppColors.primary,
-              ),
-
-            // Leave / Reject Action Button
-            if (!room.isHost && isRegistered && ['OPEN', 'FULL'].contains(room.status))
-              SizedBox(
-                width: double.infinity,
-                height: AppTokens.touchTarget,
-                child: OutlinedButton(
-                  onPressed: _busy ? null : () => _leave(room),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.loss),
-                    foregroundColor: AppColors.loss,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Text(
-                    room.myStatus == 'RECONFIRM'
-                        ? 'Từ chối điều kiện mới'
-                        : 'Hủy đăng ký',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ),
-
-            // Host Actions: Edit, Publish, Cancel, Start, Finish
             if (room.canEdit)
               OutlinedButton.icon(
                 onPressed: _busy ? null : () => _edit(room),
                 style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, AppTokens.touchTarget),
+                  minimumSize: const Size(
+                    double.infinity,
+                    AppTokens.touchTarget,
+                  ),
                   side: const BorderSide(color: AppColors.border),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 icon: const Icon(Icons.edit_calendar_outlined, size: 16),
                 label: const Text('Sửa điều kiện / lịch'),
               ),
 
-            if (room.isHost && room.status == 'DRAFT')
-              action('Mở đăng ký', 'publish', isPrimary: true),
+            if (room.isHost &&
+                room.members.any((m) => m['status'] == 'RECONFIRM'))
+              action(
+                'Giải phóng chỗ chưa xác nhận lại (không phạt)',
+                'release_unconfirmed',
+                isPrimary: false,
+              ),
 
             if (room.isHost && ['DRAFT', 'OPEN', 'FULL'].contains(room.status))
               SizedBox(
@@ -1000,34 +1238,14 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: AppColors.loss),
                     foregroundColor: AppColors.loss,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   icon: const Icon(Icons.cancel_outlined, size: 16),
                   label: const Text('Hủy buổi chơi'),
                 ),
               ),
-
-            if (room.isHost &&
-                ['OPEN', 'FULL'].contains(room.status) &&
-                (!room.startsAt.isAfter(DateTime.now()) ||
-                    widget.repository is MockRoomRepository)) ...[
-              if (room.members.any((m) => m['status'] == 'RECONFIRM'))
-                action(
-                  'Giải phóng chỗ chưa xác nhận lại (không phạt)',
-                  'release_unconfirmed',
-                  isPrimary: false,
-                ),
-              action(
-                widget.repository is MockRoomRepository
-                    ? 'Bắt đầu buổi chơi (mock cho phép sớm)'
-                    : 'Bắt đầu buổi chơi',
-                'start',
-                isPrimary: true,
-              ),
-            ],
-
-            if (room.isHost && room.status == 'IN_PROGRESS')
-              action('Kết thúc buổi (chưa chốt Elo/điểm danh)', 'finish', isPrimary: true),
           ],
         );
       },

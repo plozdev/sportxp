@@ -7,12 +7,14 @@ import 'package:sport_xp_4/features/feed/presentation/activity_editor_page.dart'
 import 'package:sport_xp_4/features/feed/presentation/activity_feed_page.dart';
 import 'package:sport_xp_4/features/rooms/data/mock_room_repository.dart';
 import 'package:sport_xp_4/features/rooms/domain/managed_room.dart';
+import 'package:sport_xp_4/features/profile/domain/player_profile.dart';
+import 'package:sport_xp_4/features/profile/presentation/profile_page.dart';
 
 void main() {
   late MockRoomRepository rooms;
   late MockActivityRepository repo;
   setUp(() {
-    rooms = MockRoomRepository(userId: 'me');
+    rooms = MockRoomRepository(userId: 'me', seedActivityFixtures: false);
     repo = MockActivityRepository(rooms);
   });
   Future<ActivityView> draft(ActivityKind kind) async => (await repo.drafts())
@@ -362,7 +364,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Hoạt động chờ chia sẻ (2)'), findsOneWidget);
+      expect(find.textContaining('Hoạt động chờ chia sẻ'), findsNothing);
       expect(
         find.textContaining('Chưa có hoạt động được chia sẻ'),
         findsOneWidget,
@@ -371,17 +373,28 @@ void main() {
     },
   );
   testWidgets(
-    'Archive tab displays athletic diary metrics and enables Strava card sharing',
+    'Profile opens a separate diary with deduplicated metrics and card sharing',
     (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.dark,
           home: Scaffold(
-            body: ActivityFeedPage(
-              repository: repo,
-              rooms: rooms,
-              refreshToken: 0,
-              onFindRooms: () {},
+            body: ProfilePage(
+              profile: Future.value(
+                const PlayerProfile(
+                  id: 'me',
+                  displayName: 'Bạn',
+                  eloRating: 750,
+                  tierName: 'TB',
+                  trustScore: 100,
+                  winStreak: 0,
+                ),
+              ),
+              isSignedIn: true,
+              onSignOut: () {},
+              onRefresh: () {},
+              activityRepository: repo,
+              roomRepository: rooms,
             ),
           ),
         ),
@@ -389,22 +402,23 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tap on Kho lưu trữ tab
-      await tester.tap(find.text('Kho lưu trữ'));
+      await tester.scrollUntilVisible(find.text('Nhật ký thi đấu'), 200);
+      await tester.tap(find.text('Nhật ký thi đấu'));
       await tester.pumpAndSettle();
 
       // Verify Athletic Summary metrics
       expect(find.text('TỔNG KẾT THI ĐẤU'), findsOneWidget);
-      expect(find.text('Nhật ký các buổi chơi đã đồng bộ'), findsOneWidget);
+      expect(find.text('Nhật ký các buổi chơi đã hoàn thành'), findsOneWidget);
       expect(find.text('Buổi chơi'), findsOneWidget);
       expect(find.text('Số trận'), findsOneWidget);
 
       // Verify archived items & Strava share buttons are rendered
-      expect(find.text('Chia sẻ thẻ ảnh'), findsWidgets);
+      expect(find.text('Chia sẻ ảnh'), findsWidgets);
 
       // Tap 'Chia sẻ thẻ ảnh' to open Strava share sheet
-      await tester.ensureVisible(find.text('Chia sẻ thẻ ảnh').first);
+      await tester.ensureVisible(find.text('Chia sẻ ảnh').first);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Chia sẻ thẻ ảnh').first);
+      await tester.tap(find.text('Chia sẻ ảnh').first);
       await tester.pumpAndSettle();
 
       // Verify Strava Share Sheet opened
@@ -422,6 +436,8 @@ void main() {
 }
 
 class _PrivateSource implements ActivityLogSource {
+  @override
+  String get ownerId => rooms.ownerId;
   _PrivateSource(this.rooms);
   final MockRoomRepository rooms;
   @override

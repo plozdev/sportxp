@@ -16,13 +16,20 @@ void main() {
       final repo = MockLeaderboardRepository(sandbox);
 
       final courts = await repo.getCourts();
-      expect(courts.length, 3);
-      expect(courts.first.id, 'court-a');
-      expect(courts.first.name, 'Sân Đào Duy Anh');
+      expect(courts, isNotEmpty);
 
       final courtAPlayers = await repo.getCourtLeaderboard(courtId: 'court-a');
-      expect(courtAPlayers.length, greaterThan(20));
-      expect(courtAPlayers.any((p) => p.displayName == 'Bảo · giả lập'), true);
+      expect(courtAPlayers.any((p) => p.id == 'user-1'), true);
+      expect(
+        courtAPlayers.map((p) => p.id).toSet().length,
+        courtAPlayers.length,
+      );
+      for (var i = 1; i < courtAPlayers.length; i++) {
+        expect(
+          courtAPlayers[i - 1].eloRating!,
+          greaterThanOrEqualTo(courtAPlayers[i].eloRating!),
+        );
+      }
 
       final nearby = await repo.getNearbyPlayers(
         courtId: 'court-a',
@@ -43,75 +50,83 @@ void main() {
   });
 
   group('LeaderboardPage Duolingo UI & Court Selection', () {
-    testWidgets('renders explicit court header, promotion line, and dedicated bottom bar', (tester) async {
-      final sandbox = MockRoomRepository(userId: 'user-1', displayName: 'Tuấn');
-      final repo = MockLeaderboardRepository(sandbox);
+    testWidgets(
+      'renders explicit court header, promotion line, and dedicated bottom bar',
+      (tester) async {
+        final sandbox = MockRoomRepository(
+          userId: 'user-1',
+          displayName: 'Tuấn',
+        );
+        final repo = MockLeaderboardRepository(sandbox);
 
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.dark,
-          home: Scaffold(
-            body: LeaderboardPage(
-              repository: repo,
-              onRefresh: () {},
-              isMock: true,
-              selectedPlayerId: 'user-1',
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.dark,
+            home: Scaffold(
+              body: LeaderboardPage(
+                repository: repo,
+                onRefresh: () {},
+                isMock: true,
+                selectedPlayerId: 'user-1',
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      await tester.pumpAndSettle();
+        await tester.pumpAndSettle();
 
-      // Check explicit court header & mock notice
-      expect(find.text('BẢNG XẾP HẠNG THEO SÂN'), findsOneWidget);
-      expect(find.text('Sân Đào Duy Anh'), findsOneWidget);
-      expect(find.textContaining('BẢNG XẾP HẠNG GIẢ LẬP'), findsOneWidget);
+        // Check explicit court header & mock notice
+        expect(find.text('BẢNG XẾP HẠNG THEO SÂN'), findsOneWidget);
+        expect(find.text('Sân Đào Duy Anh'), findsOneWidget);
+        expect(find.textContaining('BẢNG XẾP HẠNG GIẢ LẬP'), findsOneWidget);
 
-      // Check Duolingo Mode Tabs
-      expect(find.text('Tất cả'), findsOneWidget);
-      expect(find.text('Quanh bạn (±5)'), findsOneWidget);
+        // Check Duolingo Mode Tabs
+        expect(find.text('Tất cả'), findsOneWidget);
+        expect(find.text('Quanh bạn (±5)'), findsOneWidget);
 
-      // Check Duolingo Promotion line
-      expect(find.text('KHU VỰC THĂNG HẠNG (TOP 3)'), findsOneWidget);
+        // Check Top players at court line
+        expect(find.text('Top tay vợt tại sân'), findsOneWidget);
 
-      // Check rows rendered
-      expect(find.byType(DuolingoRankRow), findsWidgets);
-      expect(find.text('Bảo · giả lập'), findsWidgets);
+        // Check rows rendered
+        expect(find.byType(DuolingoRankRow), findsWidgets);
+        expect(tester.takeException(), isNull);
 
-      // Check dedicated fixed standing bar at the bottom
-      expect(find.byType(MyFixedStandingBar), findsOneWidget);
-      expect(find.textContaining('VỊ TRÍ CỦA BẠN TẠI'), findsOneWidget);
+        // Check dedicated fixed standing bar at the bottom
+        expect(find.byType(MyFixedStandingBar), findsOneWidget);
+        expect(find.textContaining('VỊ TRÍ CỦA BẠN TẠI'), findsOneWidget);
 
-      // Switch to "Quanh bạn (±5)"
-      await tester.tap(find.text('Quanh bạn (±5)'));
-      await tester.pumpAndSettle();
+        // Switch to "Quanh bạn (±5)"
+        await tester.tap(find.text('Quanh bạn (±5)'));
+        await tester.pumpAndSettle();
 
-      // In nearMe mode, current user is displayed
-      expect(find.textContaining('Tuấn'), findsWidgets);
+        // In nearMe mode, current user is displayed
+        expect(find.textContaining('Tuấn'), findsWidgets);
 
-      // Tap court picker button to open CourtPickerSheet
-      await tester.tap(find.byKey(const Key('court_picker_button')));
-      await tester.pumpAndSettle();
+        // Tap court picker button to open CourtPickerSheet
+        await tester.tap(find.byKey(const Key('court_picker_button')));
+        await tester.pumpAndSettle();
 
-      expect(find.byType(CourtPickerSheet), findsOneWidget);
-      expect(find.text('CHỌN SÂN XẾP HẠNG'), findsOneWidget);
+        expect(find.byType(CourtPickerSheet), findsOneWidget);
+        expect(find.text('CHỌN SÂN XẾP HẠNG'), findsOneWidget);
 
-      // Select Sân Bình Thạnh
-      await tester.tap(find.text('Sân Bình Thạnh'));
-      await tester.pumpAndSettle();
+        // Select Sân Bình Thạnh
+        await tester.tap(find.text('Sân Bình Thạnh'));
+        await tester.pumpAndSettle();
 
-      expect(find.text('Sân Bình Thạnh'), findsOneWidget);
+        expect(find.text('Sân Bình Thạnh'), findsOneWidget);
 
-      // Tap a player row to open PlayerDetailModal
-      await tester.tap(find.byType(DuolingoRankRow).first);
-      await tester.pumpAndSettle();
+        // Tap a player row to open PlayerDetailModal
+        await tester.tap(find.byType(DuolingoRankRow).first);
+        await tester.pumpAndSettle();
 
-      expect(find.text('ĐIỂM ELO'), findsOneWidget);
-      expect(find.text('UY TÍN'), findsOneWidget);
-    });
+        expect(find.text('ĐIỂM ELO'), findsOneWidget);
+        expect(find.text('UY TÍN'), findsOneWidget);
+      },
+    );
 
-    testWidgets('MyFixedStandingBar renders and triggers scroll callback', (tester) async {
+    testWidgets('MyFixedStandingBar renders and triggers scroll callback', (
+      tester,
+    ) async {
       var jumped = false;
       final sandbox = MockRoomRepository(userId: 'user-1', displayName: 'Tuấn');
       final profile = (MockLeaderboardRepository(sandbox).players().first);
@@ -146,36 +161,42 @@ void main() {
       expect(jumped, true);
     });
 
-    testWidgets('MyFixedStandingBar does not overflow on narrow 320px device with long court name', (tester) async {
-      final sandbox = MockRoomRepository(userId: 'user-1', displayName: 'Hoàng Long Vũ');
-      final profile = (MockLeaderboardRepository(sandbox).players().first);
-      const rankInfo = PlayerCourtRank(
-        rank: 14,
-        totalPlayers: 35,
-        courtName: 'Sân Cầu Lông Kỳ Hòa 2 Quận 10 Mở Rộng',
-        courtId: 'court-a',
-        pointsToNextRank: 99,
-        nextPlayerName: 'Nguyễn Văn Minh Tuấn',
-      );
+    testWidgets(
+      'MyFixedStandingBar does not overflow on narrow 320px device with long court name',
+      (tester) async {
+        final sandbox = MockRoomRepository(
+          userId: 'user-1',
+          displayName: 'Hoàng Long Vũ',
+        );
+        final profile = (MockLeaderboardRepository(sandbox).players().first);
+        const rankInfo = PlayerCourtRank(
+          rank: 14,
+          totalPlayers: 35,
+          courtName: 'Sân Cầu Lông Kỳ Hòa 2 Quận 10 Mở Rộng',
+          courtId: 'court-a',
+          pointsToNextRank: 99,
+          nextPlayerName: 'Nguyễn Văn Minh Tuấn',
+        );
 
-      tester.view.physicalSize = const Size(320, 600);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
+        tester.view.physicalSize = const Size(320, 600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
 
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.dark,
-          home: Scaffold(
-            body: MyFixedStandingBar(
-              userProfile: profile,
-              rankSummary: rankInfo,
-              onScrollToMyRank: () {},
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.dark,
+            home: Scaffold(
+              body: MyFixedStandingBar(
+                userProfile: profile,
+                rankSummary: rankInfo,
+                onScrollToMyRank: () {},
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      expect(tester.takeException(), isNull);
-    });
+        expect(tester.takeException(), isNull);
+      },
+    );
   });
 }

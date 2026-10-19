@@ -13,6 +13,7 @@ class MockLeaderboardRepository implements LeaderboardRepository {
   List<PlayerProfile> players() {
     const streaks = {'linh': 4, 'minh': 2, 'an': 0, 'bao': 6};
     const matchCounts = {'linh': 8, 'minh': 5, 'an': 0, 'bao': 12};
+    const deltas = {'linh': 1, 'minh': -1, 'an': 0, 'bao': 3};
     final rows =
         [
           for (final person in sandbox.people.entries)
@@ -24,6 +25,7 @@ class MockLeaderboardRepository implements LeaderboardRepository {
               trustScore: 100,
               winStreak: streaks[person.key] ?? 0,
               confirmedMatchesCount: matchCounts[person.key] ?? 0,
+              rankDelta: person.key == sandbox.actorId ? 2 : (deltas[person.key] ?? 0),
               homeCourtId: _courtForPlayer(person.key),
               homeCourtName: _courtNameForPlayer(person.key),
             ),
@@ -71,37 +73,37 @@ class MockLeaderboardRepository implements LeaderboardRepository {
     ];
   }
 
-  static const List<(String, int, int)> _clubMembersSeed = [
-    ('Hoàng Long', 960, 5),
-    ('Trần Dũng', 930, 3),
-    ('Phạm Hùng', 900, 2),
-    ('Lê Nam', 880, 4),
-    ('Vũ Huy', 850, 1),
-    ('Đức Thịnh', 830, 0),
-    ('Thanh Tùng', 810, 2),
-    ('Việt Anh', 790, 3),
-    ('Ngọc Sơn', 770, 1),
-    ('Tuấn Anh', 750, 0),
-    ('Minh Trí', 730, 2),
-    ('Hữu Đạt', 710, 1),
-    ('Quang Khải', 690, 0),
-    ('Trung Kiên', 670, 2),
-    ('Thành Đạt', 650, 0),
-    ('Duy Mạnh', 630, 1),
-    ('Tiến Dũng', 610, 0),
-    ('Xuân Trường', 590, 2),
-    ('Công Phượng', 570, 0),
-    ('Hùng Dũng', 550, 1),
-    ('Văn Hậu', 530, 0),
-    ('Hoàng Đức', 510, 1),
-    ('Quang Hải', 490, 0),
-    ('Văn Toàn', 470, 0),
-    ('Tấn Tài', 450, 1),
-    ('Đức Huy', 430, 0),
-    ('Bùi Dũng', 410, 0),
-    ('Hồng Duy', 390, 0),
-    ('Văn Thanh', 370, 0),
-    ('Trọng Hoàng', 350, 0),
+  static const List<(String, int, int, int)> _clubMembersSeed = [
+    ('Hoàng Long', 960, 5, 0),
+    ('Trần Dũng', 930, 3, 1),
+    ('Phạm Hùng', 900, 2, -1),
+    ('Lê Nam', 880, 4, 2),
+    ('Vũ Huy', 850, 1, 0),
+    ('Đức Thịnh', 830, 0, -2),
+    ('Thanh Tùng', 810, 2, 1),
+    ('Việt Anh', 790, 3, -1),
+    ('Ngọc Sơn', 770, 1, 0),
+    ('Tuấn Anh', 750, 0, 1),
+    ('Minh Trí', 730, 2, -1),
+    ('Hữu Đạt', 710, 1, 0),
+    ('Quang Khải', 690, 0, 1),
+    ('Trung Kiên', 670, 2, -1),
+    ('Thành Đạt', 650, 0, 0),
+    ('Duy Mạnh', 630, 1, 2),
+    ('Tiến Dũng', 610, 0, -1),
+    ('Xuân Trường', 590, 2, 0),
+    ('Công Phượng', 570, 0, -2),
+    ('Hùng Dũng', 550, 1, 1),
+    ('Văn Hậu', 530, 0, 0),
+    ('Hoàng Đức', 510, 1, 1),
+    ('Quang Hải', 490, 0, -1),
+    ('Văn Toàn', 470, 0, 0),
+    ('Tấn Tài', 450, 1, 1),
+    ('Đức Huy', 430, 0, -1),
+    ('Bùi Dũng', 410, 0, 0),
+    ('Hồng Duy', 390, 0, 0),
+    ('Văn Thanh', 370, 0, -1),
+    ('Trọng Hoàng', 350, 0, 0),
   ];
 
   List<PlayerProfile> _generateCourtPlayers(String courtId) {
@@ -129,6 +131,7 @@ class MockLeaderboardRepository implements LeaderboardRepository {
           trustScore: 95 + (i % 5),
           winStreak: _clubMembersSeed[i].$3,
           confirmedMatchesCount: 10 + i,
+          rankDelta: _clubMembersSeed[i].$4,
           homeCourtId: courtId,
           homeCourtName: courtName,
         ),
@@ -216,6 +219,10 @@ class MockLeaderboardRepository implements LeaderboardRepository {
       isPodium: rank <= 3,
       tier: player.eloRating != null ? RankTier.fromElo(player.eloRating!) : null,
       elo: player.eloRating,
+      rankDelta: player.rankDelta != 0 ? player.rankDelta : 2,
+      weeklyMatchesPlayed: 1,
+      weeklyMatchesTarget: 2,
+      recentAchievement: 'Lần đầu thắng đối thủ trình cao hơn',
     );
   }
 

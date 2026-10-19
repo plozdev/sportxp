@@ -4,6 +4,8 @@ import 'package:sport_xp_4/app/sport_xp_shell.dart';
 import 'package:sport_xp_4/core/theme/app_theme.dart';
 import 'package:sport_xp_4/features/rankings/data/mock_leaderboard_repository.dart';
 import 'package:sport_xp_4/features/rooms/data/mock_room_repository.dart';
+import 'package:sport_xp_4/features/feed/presentation/activity_feed_page.dart';
+import 'package:sport_xp_4/features/rankings/presentation/leaderboard_page.dart';
 
 import 'managed_rooms_test.dart' show signedClient, response, userId;
 
@@ -52,17 +54,23 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Đổi tài khoản giả lập'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Linh · giả lập'));
+      final account = find.byKey(const ValueKey('account-linh'));
+      await tester.ensureVisible(account);
+      await tester.pumpAndSettle();
+      await tester.tap(account.hitTestable());
       await tester.pumpAndSettle();
       expect(find.textContaining('Đang thử: Linh'), findsOneWidget);
       expect(client.auth.currentUser!.id, userId);
       await tester.tap(find.text('Trang chủ'));
       await tester.pumpAndSettle();
-      expect(find.text('Hoạt động chờ chia sẻ (1)'), findsOneWidget);
+      expect(find.byType(ActivityFeedPage), findsOneWidget);
+      expect(tester.takeException(), isNull);
       await tester.tap(find.text('Xếp hạng'));
       await tester.pumpAndSettle();
       expect(find.textContaining('BẢNG XẾP HẠNG GIẢ LẬP'), findsOneWidget);
-      expect(find.text('Bảo · giả lập'), findsOneWidget);
+      final page = tester.widget<LeaderboardPage>(find.byType(LeaderboardPage));
+      expect(page.selectedPlayerId, 'linh');
+      expect(page.repository, isA<MockLeaderboardRepository>());
       expect(
         queries.every((q) => q.containsKey('id')),
         true,
@@ -90,7 +98,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Đổi tài khoản giả lập'));
       await tester.pumpAndSettle();
-      expect(find.text('Minh · giả lập'), findsOneWidget);
+      expect(find.byKey(const ValueKey('account-minh')), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },

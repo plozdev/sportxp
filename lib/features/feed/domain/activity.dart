@@ -46,6 +46,7 @@ class ActivityLog {
 /// permissions before returning any projection, rather than trust client checks.
 abstract interface class ActivityLogSource {
   String get actorId;
+  String get ownerId;
   int get generation;
   Map<String, String> get actorNames;
   bool areFriends(String a, String b);
@@ -87,6 +88,17 @@ class ActivityView {
     required this.canOpenLog,
     required this.liked,
     required this.likeCount,
+    this.sportType = 'badminton',
+    this.durationMinutes,
+    this.calories,
+    this.avgHeartRate,
+    this.maxHeartRate,
+    this.distanceKm,
+    this.pace,
+    this.deviceSource,
+    this.matchScores = const [],
+    this.likedByNames = const [],
+    this.commentCount = 0,
   });
   final String id, roomId, authorId, authorName, caption, title, courtName;
   final ActivityKind kind;
@@ -96,6 +108,17 @@ class ActivityView {
   final int version, likeCount;
   final ActivityTotals totals;
   final bool resultsUpdated, isOwner, canOpenLog, liked;
+  final String sportType;
+  final int? durationMinutes;
+  final int? calories;
+  final int? avgHeartRate;
+  final int? maxHeartRate;
+  final double? distanceKm;
+  final String? pace;
+  final String? deviceSource;
+  final List<String> matchScores;
+  final List<String> likedByNames;
+  final int commentCount;
   bool get isDraft => publishedAt == null;
 }
 

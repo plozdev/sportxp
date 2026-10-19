@@ -11,16 +11,14 @@ void main() {
   testWidgets(
     'RoomEditorPage displays game lobby code hero banner with copy and regenerate',
     (tester) async {
-      final repo = MockRoomRepository(userId: '00000000-0000-4000-8000-000000000001');
+      final repo = MockRoomRepository(
+        userId: '00000000-0000-4000-8000-000000000001',
+      );
 
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.dark,
-          home: Scaffold(
-            body: RoomEditorPage(
-              repository: repo,
-            ),
-          ),
+          home: Scaffold(body: RoomEditorPage(repository: repo)),
         ),
       );
       await tester.pumpAndSettle();
@@ -92,28 +90,27 @@ void main() {
   testWidgets(
     'ManagedRoomsPage renders 3-tab game lobby, join by code modal, and streamlined cards',
     (tester) async {
-      final repo = MockRoomRepository(userId: '00000000-0000-4000-8000-000000000001');
+      final repo = MockRoomRepository(
+        userId: '00000000-0000-4000-8000-000000000001',
+      );
 
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.dark,
           home: Scaffold(
-            body: ManagedRoomsPage(
-              repository: repo,
-              refreshToken: 0,
-            ),
+            body: ManagedRoomsPage(repository: repo, refreshToken: 0),
           ),
         ),
       );
       await tester.pumpAndSettle();
 
       // Verify top lobby bar
-      expect(find.text('SẢNH KÈO ĐẤU'), findsOneWidget);
+      expect(find.text('KÈO ĐẤU'), findsOneWidget);
       expect(find.text('Nhập mã'), findsOneWidget);
 
       // Verify 3 tabs
-      expect(find.text('Sảnh Public'), findsOneWidget);
-      expect(find.text('Phòng Private'), findsOneWidget);
+      expect(find.text('Tìm kèo'), findsOneWidget);
+      expect(find.text('Phòng Private'), findsNothing);
       expect(find.text('Buổi của tôi'), findsOneWidget);
 
       // Open Join by Code modal
@@ -127,9 +124,6 @@ void main() {
       await tester.pumpAndSettle();
 
       // Switch to Phòng Private
-      await tester.tap(find.text('Phòng Private'));
-      await tester.pumpAndSettle();
-      expect(find.text('Phòng riêng bằng mã'), findsWidgets);
 
       // Switch to Buổi của tôi
       await tester.tap(find.text('Buổi của tôi'));
@@ -145,9 +139,13 @@ void main() {
       'court_id': '11111111-1111-4111-8111-111111111111',
       'title': 'Trận đấu Rank',
       'court_name': 'Sân A',
-      'starts_at': DateTime.now().add(const Duration(hours: 3)).toIso8601String(),
+      'starts_at': DateTime.now()
+          .add(const Duration(hours: 3))
+          .toIso8601String(),
       'ends_at': DateTime.now().add(const Duration(hours: 5)).toIso8601String(),
-      'cancel_by': DateTime.now().add(const Duration(hours: 2)).toIso8601String(),
+      'cancel_by': DateTime.now()
+          .add(const Duration(hours: 2))
+          .toIso8601String(),
       'capacity': 6,
       'reserved': 3,
       'min_elo': 600,
@@ -170,9 +168,13 @@ void main() {
       'court_id': '11111111-1111-4111-8111-111111111111',
       'title': 'Trận đấu Kèo',
       'court_name': 'Sân B',
-      'starts_at': DateTime.now().add(const Duration(hours: 3)).toIso8601String(),
+      'starts_at': DateTime.now()
+          .add(const Duration(hours: 3))
+          .toIso8601String(),
       'ends_at': DateTime.now().add(const Duration(hours: 5)).toIso8601String(),
-      'cancel_by': DateTime.now().add(const Duration(hours: 2)).toIso8601String(),
+      'cancel_by': DateTime.now()
+          .add(const Duration(hours: 2))
+          .toIso8601String(),
       'capacity': 4,
       'reserved': 2,
       'min_elo': 0,
@@ -192,7 +194,9 @@ void main() {
   testWidgets(
     'Notices banner in ManagedRoomsPage expands ListTile without DecoratedBox assertions',
     (tester) async {
-      final repo = MockRoomRepository(userId: '00000000-0000-4000-8000-000000000001');
+      final repo = MockRoomRepository(
+        userId: '00000000-0000-4000-8000-000000000001',
+      );
       final room = (await repo.get('host-demo'))!;
       await repo.execute(
         RoomCommand(
@@ -206,10 +210,7 @@ void main() {
         MaterialApp(
           theme: AppTheme.dark,
           home: Scaffold(
-            body: ManagedRoomsPage(
-              repository: repo,
-              refreshToken: 0,
-            ),
+            body: ManagedRoomsPage(repository: repo, refreshToken: 0),
           ),
         ),
       );

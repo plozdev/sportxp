@@ -11,21 +11,28 @@ import 'managed_room_repository.dart';
 /// Session-local sandbox. Never receives a Supabase client or writes a profile.
 /// Commands validate before committing; receipts are scoped to actor + request.
 class MockRoomRepository implements RoomSessionRepository, ActivityLogSource {
-  MockRoomRepository({required this.userId, String displayName = 'Bạn'}) {
+  MockRoomRepository({
+    required this.userId,
+    String displayName = 'Bạn',
+    this.seedActivityFixtures = true,
+  }) {
     people = {
       userId: displayName,
-      'linh': 'Linh · giả lập',
-      'minh': 'Minh · giả lập',
-      'an': 'An · giả lập',
-      'bao': 'Bảo · giả lập',
+      'linh': 'Linh Nguyễn',
+      'minh': 'Minh Trần',
+      'an': 'An Lê',
+      'bao': 'Bảo Phạm',
     };
     actorId = userId;
     reset();
   }
   final String userId;
+  final bool seedActivityFixtures;
   late final Map<String, String> people;
   @override
   late String actorId;
+  @override
+  String get ownerId => userId;
   @override
   int get generation => _generation;
   int _generation = 0;
@@ -160,7 +167,9 @@ class MockRoomRepository implements RoomSessionRepository, ActivityLogSource {
       'an': 700,
       'bao': 1000,
     });
-    final start = DateTime.now().add(const Duration(days: 1));
+    final now = DateTime.now();
+    final start = now.add(const Duration(days: 1));
+
     void seed(
       String id,
       String host,
@@ -169,18 +178,38 @@ class MockRoomRepository implements RoomSessionRepository, ActivityLogSource {
       String visibility = 'PUBLIC',
       String status = 'OPEN',
       int day = 0,
+      int? hoursAgo,
+      String? title,
+      String courtLabel = 'Sân số 2',
     }) {
-      final time = start.add(Duration(days: day));
+      final DateTime time;
+      if (hoursAgo != null) {
+        time = now.subtract(Duration(hours: hoursAgo));
+      } else {
+        time = start.add(Duration(days: day));
+      }
+      final endTime = status == 'COMPLETED'
+          ? time
+          : time.add(const Duration(hours: 2));
+      final startTime = status == 'COMPLETED'
+          ? time.subtract(const Duration(hours: 2))
+          : time;
+
       _rooms[id] = {
         'id': id,
         'room_code': '#XP-${1001 + _rooms.length}',
         'host_id': host,
         'court_id': venues[court].id,
-        'title': 'Giao lưu ${venues[court].area}',
-        'starts_at': time.toIso8601String(),
-        'ends_at': time.add(const Duration(hours: 2)).toIso8601String(),
-        'cancel_by': time.subtract(const Duration(hours: 1)).toIso8601String(),
-        'capacity': 4,
+        'title': title ?? 'Giao lưu ${venues[court].area}',
+        'starts_at': startTime.toIso8601String(),
+        'ends_at': endTime.toIso8601String(),
+        'completed_at': status == 'COMPLETED'
+            ? endTime.toIso8601String()
+            : null,
+        'cancel_by': startTime
+            .subtract(const Duration(hours: 1))
+            .toIso8601String(),
+        'capacity': members.length < 4 ? 4 : members.length,
         'min_elo': 0,
         'max_elo': 2000,
         'fee': 40000,
@@ -188,13 +217,14 @@ class MockRoomRepository implements RoomSessionRepository, ActivityLogSource {
         'visibility': visibility,
         'status': status,
         'host_plays': true,
-        'court_label': 'Sân số 2',
+        'court_label': courtLabel,
         'notes': 'Cầu và nước đã gồm trong phí dự kiến.',
         'booking_status': 'UNCONFIRMED',
         'members': [
           for (final p in members)
             {
               'id': p,
+              'name': people[p] ?? p,
               'role': p == host ? 'HOST' : 'PLAYER',
               'status': 'REGISTERED',
               'is_playing': true,
@@ -203,6 +233,7 @@ class MockRoomRepository implements RoomSessionRepository, ActivityLogSource {
       };
     }
 
+    // Active rooms for matchmaking tab
     seed('open-demo', 'linh', 0, ['linh', 'minh']);
     seed('full-demo', 'minh', 1, ['minh', 'linh', 'an', 'bao'], day: 1);
     seed('private-demo', 'linh', 2, ['linh'], visibility: 'PRIVATE', day: 2);
@@ -215,18 +246,461 @@ class MockRoomRepository implements RoomSessionRepository, ActivityLogSource {
       status: 'IN_PROGRESS',
       day: -1,
     );
+
+    if (!seedActivityFixtures) {
+      // Small deterministic log for command/permission tests, without demo posts.
+      seed(
+        'completed-demo',
+        userId,
+        0,
+        [userId, 'linh', 'minh', 'an'],
+        status: 'COMPLETED',
+        hoursAgo: 24,
+      );
+      _sessions['completed-demo'] = {
+        'attendance': <String, dynamic>{},
+        'matches': [
+          {
+            'id': 'demo-confirmed',
+            'author_id': userId,
+            'team_a': [userId],
+            'team_b': ['minh'],
+            'score': '21-19',
+            'winner': 'A',
+            'status': 'CONFIRMED',
+            'version': 2,
+            'confirmed_by': ['minh'],
+          },
+          {
+            'id': 'demo-pending',
+            'author_id': userId,
+            'team_a': [userId, 'linh'],
+            'team_b': ['minh', 'an'],
+            'score': '18-21',
+            'winner': 'B',
+            'status': 'PENDING',
+            'version': 1,
+            'confirmed_by': <String>[],
+          },
+        ],
+      };
+      return;
+    }
+    // Fixture friendships only; do not widen the feed's actual visibility rules.
+    for (final id in ['minh', 'an', 'bao']) {
+      _addedFriends.add(_pair(userId, id));
+    }
+    // 8 Realistic Completed Rooms for Activity Feed & Match Diary
+    // 1. Linh smash (2 hours ago, Court 0 Đào Duy Anh, Linh 3W-1L)
     seed(
-      'completed-demo',
+      'room-linh-smash',
+      'linh',
+      0,
+      ['linh', 'minh', 'an', 'bao'],
+      status: 'COMPLETED',
+      hoursAgo: 2,
+      title: 'Giao lưu cuối tuần Đào Duy Anh',
+      courtLabel: 'Sân số 1',
+    );
+    _sessions['room-linh-smash'] = {
+      'matches': [
+        {
+          'id': 'm-linh-1',
+          'author_id': 'linh',
+          'team_a': ['linh', 'an'],
+          'team_b': ['minh', 'bao'],
+          'score': '21-19',
+          'winner': 'A',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': ['minh'],
+        },
+        {
+          'id': 'm-linh-2',
+          'author_id': 'linh',
+          'team_a': ['linh'],
+          'team_b': ['minh'],
+          'score': '21-18',
+          'winner': 'A',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': ['minh'],
+        },
+        {
+          'id': 'm-linh-3',
+          'author_id': 'minh',
+          'team_a': ['minh'],
+          'team_b': ['linh'],
+          'score': '21-19',
+          'winner': 'A',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': ['linh'],
+        },
+        {
+          'id': 'm-linh-4',
+          'author_id': 'linh',
+          'team_a': ['linh'],
+          'team_b': ['bao'],
+          'score': '22-20',
+          'winner': 'A',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': ['bao'],
+        },
+      ],
+      'attendance': <String, dynamic>{},
+    };
+
+    // 2. User comeback (5 hours ago, Court 1 Bình Thạnh, User 3W-1L)
+    seed(
+      'room-user-comeback',
+      userId,
+      1,
+      [userId, 'minh', 'an', 'bao'],
+      status: 'COMPLETED',
+      hoursAgo: 5,
+      title: 'Kèo tối Bình Thạnh',
+      courtLabel: 'Sân số 3',
+    );
+    _sessions['room-user-comeback'] = {
+      'matches': [
+        {
+          'id': 'm-user-1',
+          'author_id': userId,
+          'team_a': [userId],
+          'team_b': ['an'],
+          'score': '21-15',
+          'winner': 'A',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': ['an'],
+        },
+        {
+          'id': 'm-user-2',
+          'author_id': userId,
+          'team_a': [userId],
+          'team_b': ['an'],
+          'score': '21-18',
+          'winner': 'A',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': ['an'],
+        },
+        {
+          'id': 'm-user-3',
+          'author_id': userId,
+          'team_a': [userId, 'minh'],
+          'team_b': ['bao', 'an'],
+          'score': '24-22',
+          'winner': 'A',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': ['bao'],
+        },
+        {
+          'id': 'm-user-4',
+          'author_id': 'bao',
+          'team_a': ['bao', 'an'],
+          'team_b': [userId, 'minh'],
+          'score': '21-17',
+          'winner': 'A',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': [userId],
+        },
+      ],
+      'attendance': <String, dynamic>{},
+    };
+
+    // 3. Minh smash defeat (18 hours ago, Court 2 Thủ Đức, Minh 1W-3L)
+    seed(
+      'room-minh-smash',
+      'minh',
+      2,
+      ['minh', 'bao', 'an', 'linh'],
+      status: 'COMPLETED',
+      hoursAgo: 18,
+      title: 'Giao lưu Thủ Đức',
+      courtLabel: 'Sân số 2',
+    );
+    _sessions['room-minh-smash'] = {
+      'matches': [
+        {
+          'id': 'm-minh-1',
+          'author_id': 'minh',
+          'team_a': ['minh'],
+          'team_b': ['bao'],
+          'score': '14-21',
+          'winner': 'B',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': ['bao'],
+        },
+        {
+          'id': 'm-minh-2',
+          'author_id': 'bao',
+          'team_a': ['bao'],
+          'team_b': ['minh'],
+          'score': '21-16',
+          'winner': 'A',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': ['minh'],
+        },
+        {
+          'id': 'm-minh-3',
+          'author_id': 'minh',
+          'team_a': ['minh', 'an'],
+          'team_b': ['bao', 'linh'],
+          'score': '19-21',
+          'winner': 'B',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': ['linh'],
+        },
+        {
+          'id': 'm-minh-4',
+          'author_id': 'minh',
+          'team_a': ['minh', 'an'],
+          'team_b': ['bao', 'linh'],
+          'score': '21-19',
+          'winner': 'A',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': ['bao'],
+        },
+      ],
+      'attendance': <String, dynamic>{},
+    };
+
+    // 4. Host Linh recap (24 hours ago, Court 0 Đào Duy Anh, Linh host recap 5 matches)
+    seed(
+      'room-host-linh-recap',
+      'linh',
+      0,
+      ['linh', 'minh', 'an', 'bao', userId],
+      status: 'COMPLETED',
+      hoursAgo: 24,
+      title: 'Sinh hoạt CLB Đào Duy Anh',
+      courtLabel: 'Sân số 1',
+    );
+    _sessions['room-host-linh-recap'] = {
+      'matches': [
+        {
+          'id': 'm-recap-1',
+          'author_id': 'linh',
+          'team_a': ['linh', 'minh'],
+          'team_b': ['an', 'bao'],
+          'score': '21-16',
+          'winner': 'A',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': ['an'],
+        },
+        {
+          'id': 'm-recap-2',
+          'author_id': userId,
+          'team_a': [userId],
+          'team_b': ['linh'],
+          'score': '19-21',
+          'winner': 'B',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': ['linh'],
+        },
+        {
+          'id': 'm-recap-3',
+          'author_id': 'minh',
+          'team_a': ['minh'],
+          'team_b': ['an'],
+          'score': '21-18',
+          'winner': 'A',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': ['an'],
+        },
+        {
+          'id': 'm-recap-4',
+          'author_id': 'bao',
+          'team_a': ['bao'],
+          'team_b': [userId],
+          'score': '21-17',
+          'winner': 'A',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': [userId],
+        },
+        {
+          'id': 'm-recap-5',
+          'author_id': 'linh',
+          'team_a': ['linh', userId],
+          'team_b': ['minh', 'bao'],
+          'score': '20-22',
+          'winner': 'B',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': ['minh'],
+        },
+      ],
+      'attendance': <String, dynamic>{},
+    };
+
+    // 5. An test vợt (48 hours ago, Court 1 Bình Thạnh, 1 PENDING match awaiting confirmation)
+    seed(
+      'room-an-pending',
+      'an',
+      1,
+      ['an', userId, 'minh', 'bao'],
+      status: 'COMPLETED',
+      hoursAgo: 48,
+      title: 'Giao lưu test vợt Bình Thạnh',
+      courtLabel: 'Sân số 4',
+    );
+    _sessions['room-an-pending'] = {
+      'matches': [
+        {
+          'id': 'm-an-1',
+          'author_id': 'an',
+          'team_a': ['an'],
+          'team_b': ['minh'],
+          'score': '21-17',
+          'winner': 'A',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': ['minh'],
+        },
+        {
+          'id': 'm-an-2',
+          'author_id': 'an',
+          'team_a': ['an'],
+          'team_b': ['bao'],
+          'score': '18-21',
+          'winner': 'B',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': ['bao'],
+        },
+        {
+          'id': 'm-an-3-pending',
+          'author_id': 'an',
+          'team_a': ['an', userId],
+          'team_b': ['minh', 'bao'],
+          'score': '21-19',
+          'winner': 'A',
+          'status': 'PENDING',
+          'version': 1,
+          'confirmed_by': <String>[],
+        },
+      ],
+      'attendance': <String, dynamic>{},
+    };
+
+    // 6. User private practice (72 hours ago, Court 2 Thủ Đức, PRIVATE, User 0W-2L)
+    seed(
+      'room-user-private',
+      userId,
+      2,
+      [userId, 'bao'],
+      visibility: 'PRIVATE',
+      status: 'COMPLETED',
+      hoursAgo: 72,
+      title: 'Tập luyện kỹ thuật cá nhân',
+      courtLabel: 'Sân số 1',
+    );
+    _sessions['room-user-private'] = {
+      'matches': [
+        {
+          'id': 'm-priv-1',
+          'author_id': userId,
+          'team_a': [userId],
+          'team_b': ['bao'],
+          'score': '15-21',
+          'winner': 'B',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': ['bao'],
+        },
+        {
+          'id': 'm-priv-2',
+          'author_id': 'bao',
+          'team_a': ['bao'],
+          'team_b': [userId],
+          'score': '21-18',
+          'winner': 'A',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': [userId],
+        },
+      ],
+      'attendance': <String, dynamic>{},
+    };
+
+    // 7. Bảo pro check (96 hours ago, Court 0 Đào Duy Anh, Bảo 3W-0L)
+    seed(
+      'room-bao-pro',
+      'bao',
+      0,
+      ['bao', 'minh', 'linh', 'an'],
+      status: 'COMPLETED',
+      hoursAgo: 96,
+      title: 'Giao lưu nâng cao Đào Duy Anh',
+      courtLabel: 'Sân số 2',
+    );
+    _sessions['room-bao-pro'] = {
+      'matches': [
+        {
+          'id': 'm-bao-1',
+          'author_id': 'bao',
+          'team_a': ['bao'],
+          'team_b': ['minh'],
+          'score': '21-11',
+          'winner': 'A',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': ['minh'],
+        },
+        {
+          'id': 'm-bao-2',
+          'author_id': 'bao',
+          'team_a': ['bao', 'an'],
+          'team_b': ['minh', 'linh'],
+          'score': '21-16',
+          'winner': 'A',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': ['linh'],
+        },
+        {
+          'id': 'm-bao-3',
+          'author_id': 'bao',
+          'team_a': ['bao', 'an'],
+          'team_b': ['minh', 'linh'],
+          'score': '21-14',
+          'winner': 'A',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': ['minh'],
+        },
+      ],
+      'attendance': <String, dynamic>{},
+    };
+
+    // 8. User unshared session (Draft in Diary, ended 30 mins ago, Court 0 Đào Duy Anh)
+    seed(
+      'room-user-draft',
       userId,
       0,
       [userId, 'linh', 'minh', 'an'],
       status: 'COMPLETED',
-      day: -2,
+      hoursAgo: 1,
+      title: 'Giao lưu sáng Phú Nhuận',
+      courtLabel: 'Sân số 2',
     );
-    _sessions['completed-demo'] = {
+    _sessions['room-user-draft'] = {
       'matches': [
         {
-          'id': 'demo-confirmed',
+          'id': 'm-draft-1',
           'author_id': userId,
           'team_a': [userId],
           'team_b': ['minh'],
@@ -237,13 +711,69 @@ class MockRoomRepository implements RoomSessionRepository, ActivityLogSource {
           'confirmed_by': ['minh'],
         },
         {
-          'id': 'demo-pending',
-          'author_id': userId,
-          'team_a': [userId, 'linh'],
-          'team_b': ['minh', 'an'],
-          'score': '18-21',
-          'winner': 'B',
-          'status': 'PENDING',
+          'id': 'm-draft-2',
+          'author_id': 'minh',
+          'team_a': ['minh', 'an'],
+          'team_b': [userId, 'linh'],
+          'score': '21-18',
+          'winner': 'A',
+          'status': 'CONFIRMED',
+          'version': 2,
+          'confirmed_by': [userId],
+        },
+      ],
+      'attendance': <String, dynamic>{},
+    };
+
+    // 9. Minh running (Conditioning / Chạy bộ phục hồi thể lực - 6 hours ago)
+    seed(
+      'room-minh-running',
+      'minh',
+      0,
+      ['minh'],
+      status: 'COMPLETED',
+      hoursAgo: 6,
+      title: 'Chạy bộ phục hồi quanh công viên Gia Định',
+      courtLabel: 'Cung đường 5km',
+    );
+    _sessions['room-minh-running'] = {
+      'matches': [
+        {
+          'id': 'm-run-1',
+          'author_id': 'minh',
+          'team_a': ['minh'],
+          'team_b': <String>[],
+          'score': '5.2 km',
+          'winner': 'A',
+          'status': 'CONFIRMED',
+          'version': 1,
+          'confirmed_by': <String>[],
+        },
+      ],
+      'attendance': <String, dynamic>{},
+    };
+
+    // 10. Bảo workout (Bổ trợ thể lực & Footwork - 30 hours ago)
+    seed(
+      'room-bao-workout',
+      'bao',
+      1,
+      ['bao'],
+      status: 'COMPLETED',
+      hoursAgo: 30,
+      title: 'Buổi tập bổ trợ cổ tay & sức bật đập cầu',
+      courtLabel: 'Phòng gym SportXP',
+    );
+    _sessions['room-bao-workout'] = {
+      'matches': [
+        {
+          'id': 'm-work-1',
+          'author_id': 'bao',
+          'team_a': ['bao'],
+          'team_b': <String>[],
+          'score': '45 phút',
+          'winner': 'A',
+          'status': 'CONFIRMED',
           'version': 1,
           'confirmed_by': <String>[],
         },

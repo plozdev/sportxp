@@ -104,6 +104,7 @@ class SupabaseLeaderboardRepository implements LeaderboardRepository {
         isPodium: rank <= 3,
         tier: player.eloRating != null ? RankTier.fromElo(player.eloRating!) : null,
         elo: player.eloRating,
+        rankDelta: player.rankDelta,
       );
     } catch (_) {
       return null;

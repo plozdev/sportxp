@@ -17,6 +17,7 @@ class PlayerProfile {
     this.socialVisibility = 'public',
     this.isIdentityVerified = false,
     this.confirmedMatchesCount = 0,
+    this.rankDelta = 0,
   }) : backendTierName = tierName;
 
   final String id, displayName;
@@ -24,6 +25,7 @@ class PlayerProfile {
   final String socialVisibility;
   final bool isIdentityVerified;
   final int confirmedMatchesCount;
+  final int rankDelta;
 
   /// Kept for diagnostics while the SQL label migration is being applied.
   final String backendTierName;
@@ -63,6 +65,7 @@ class PlayerProfile {
           (json['matches_played'] as num?)?.toInt() ??
           (json['placement_matches'] as num?)?.toInt() ??
           0,
+      rankDelta: (json['rank_delta'] as num?)?.toInt() ?? 0,
     );
   }
 

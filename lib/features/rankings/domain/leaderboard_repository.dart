@@ -14,6 +14,10 @@ class PlayerCourtRank {
     this.isPodium = false,
     this.tier,
     this.elo,
+    this.rankDelta = 0,
+    this.weeklyMatchesPlayed = 0,
+    this.weeklyMatchesTarget = 0,
+    this.recentAchievement,
   });
 
   final int rank;
@@ -25,6 +29,10 @@ class PlayerCourtRank {
   final bool isPodium;
   final RankTier? tier;
   final int? elo;
+  final int rankDelta;
+  final int weeklyMatchesPlayed;
+  final int weeklyMatchesTarget;
+  final String? recentAchievement;
 
   bool get isTopOne => rank == 1;
 }
