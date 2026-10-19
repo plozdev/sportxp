@@ -13,6 +13,9 @@ import 'package:sport_xp_4/features/profile/presentation/widgets/passport_sheet.
 void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
+    if (!const bool.fromEnvironment('TEST_SDK_FONTS', defaultValue: true)) {
+      return;
+    }
     try {
       final sdk =
           Platform.environment['FLUTTER_ROOT'] ??

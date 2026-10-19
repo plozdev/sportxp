@@ -79,16 +79,24 @@ class _OnboardingPageState extends State<OnboardingPage> {
   @override
   Widget build(BuildContext context) {
     final reducedMotion = MediaQuery.disableAnimationsOf(context);
+    final compactSignOut = MediaQuery.textScalerOf(context).scale(1) > 1.3;
     return PopScope(
       canPop: false,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('SPORTXP'),
           actions: [
-            TextButton(
-              onPressed: _saving ? null : widget.onSignOut,
-              child: const Text('Đăng xuất'),
-            ),
+            if (compactSignOut)
+              IconButton(
+                onPressed: _saving ? null : widget.onSignOut,
+                icon: const Icon(Icons.logout),
+                tooltip: 'Đăng xuất',
+              )
+            else
+              TextButton(
+                onPressed: _saving ? null : widget.onSignOut,
+                child: const Text('Đăng xuất'),
+              ),
           ],
         ),
         body: SafeArea(
@@ -131,11 +139,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
       key: ValueKey('question-$_index'),
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
       children: [
-        Row(
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 12,
+          runSpacing: 4,
           children: [
-            Expanded(
-              child: Text('Bước ${_index + 1}/5', style: AppTokens.label),
-            ),
+            Text('Bước ${_index + 1}/5', style: AppTokens.label),
             if (_index > 0)
               TextButton.icon(
                 onPressed: _saving ? null : _back,
