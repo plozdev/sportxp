@@ -471,7 +471,7 @@ class _RoomEditorPageState extends State<RoomEditorPage> {
                       onPressed: _busy ? null : _save,
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
-                        foregroundColor: AppColors.background,
+                        foregroundColor: AppColors.onPrimary,
                         minimumSize: const Size(double.infinity, 52),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),

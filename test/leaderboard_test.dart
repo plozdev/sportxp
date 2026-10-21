@@ -76,9 +76,9 @@ void main() {
         await tester.pumpAndSettle();
 
         // Check explicit court header & mock notice
-        expect(find.text('BẢNG XẾP HẠNG THEO SÂN'), findsOneWidget);
+        expect(find.text('Bảng xếp hạng'), findsOneWidget);
         expect(find.text('Sân Đào Duy Anh'), findsOneWidget);
-        expect(find.textContaining('BẢNG XẾP HẠNG GIẢ LẬP'), findsOneWidget);
+        expect(find.textContaining('Dữ liệu mẫu'), findsOneWidget);
 
         // Check Duolingo Mode Tabs
         expect(find.text('Tất cả'), findsOneWidget);
@@ -88,17 +88,18 @@ void main() {
         expect(find.text('Top tay vợt tại sân'), findsOneWidget);
 
         // Check rows rendered
-        expect(find.byType(DuolingoRankRow), findsWidgets);
+        expect(find.byIcon(Icons.emoji_events_outlined), findsWidgets);
         expect(tester.takeException(), isNull);
 
         // Check dedicated fixed standing bar at the bottom
         expect(find.byType(MyFixedStandingBar), findsOneWidget);
-        expect(find.textContaining('VỊ TRÍ CỦA BẠN TẠI'), findsOneWidget);
+        expect(find.byKey(const Key('my_fixed_standing_row')), findsOneWidget);
 
         // Switch to "Quanh bạn (±5)"
         await tester.tap(find.text('Quanh bạn (±5)'));
         await tester.pumpAndSettle();
 
+        expect(find.byType(DuolingoRankRow), findsWidgets);
         // In nearMe mode, current user is displayed
         expect(find.textContaining('Tuấn'), findsWidgets);
 
@@ -116,7 +117,10 @@ void main() {
         expect(find.text('Sân Bình Thạnh'), findsOneWidget);
 
         // Tap a player row to open PlayerDetailModal
-        await tester.tap(find.byType(DuolingoRankRow).first);
+        final courtPlayers = await repo.getCourtLeaderboard(courtId: 'court-b');
+        await tester.tap(
+          find.byKey(ValueKey('podium-${courtPlayers.first.id}')),
+        );
         await tester.pumpAndSettle();
 
         expect(find.text('ĐIỂM ELO'), findsOneWidget);
@@ -155,7 +159,7 @@ void main() {
       );
 
       expect(find.text('#14'), findsOneWidget);
-      expect(find.textContaining('VỊ TRÍ CỦA BẠN TẠI'), findsOneWidget);
+      expect(find.byKey(const Key('my_fixed_standing_row')), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('my_fixed_standing_row')));
       expect(jumped, true);

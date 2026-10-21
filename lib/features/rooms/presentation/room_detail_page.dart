@@ -990,7 +990,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                   }),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.background,
+                foregroundColor: AppColors.onPrimary,
                 minimumSize: const Size(0, 48),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),

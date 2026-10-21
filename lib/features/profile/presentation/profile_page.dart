@@ -270,73 +270,46 @@ class _AthleteHeaderCard extends StatelessWidget {
     required this.onViewPassport,
     this.onEdit,
   });
-
   final PlayerProfile player;
   final VoidCallback onViewPassport;
   final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
-    final isCalibrated = player.isCalibrated;
-    final completed = player.placementMatchesCompleted;
-    final nextInfo = player.nextTierProgress;
-
+    final calibrated = player.isCalibrated;
+    final next = player.nextTierProgress;
+    final progress = calibrated
+        ? next.progress
+        : player.placementMatchesCompleted / 5;
     return BentoCard(
+      highlighted: true,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Row danh tính vận động viên (Avatar, Tên, Ngày gia nhập, Sân nhà, Sửa)
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Avatar tròn viền nổi bật
-              Stack(
-                alignment: Alignment.bottomRight,
-                children: [
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.background,
-                      border: Border.all(color: AppColors.primary, width: 2),
-                      image: player.avatarUrl != null
-                          ? DecorationImage(
-                              image: NetworkImage(player.avatarUrl!),
-                              fit: BoxFit.cover,
-                            )
-                          : null,
-                    ),
-                    child: player.avatarUrl == null
-                        ? Center(
-                            child: Text(
-                              player.initials,
-                              style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w900,
-                                color: AppColors.text,
-                              ),
-                            ),
-                          )
-                        : null,
-                  ),
-                  if (player.isIdentityVerified)
-                    Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: const BoxDecoration(
-                        color: AppColors.surface,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.verified,
-                        size: 16,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                ],
+              CircleAvatar(
+                radius: 27,
+                backgroundColor: AppColors.mint,
+                child: ClipOval(
+                  child: player.avatarUrl != null
+                      ? Image.network(
+                          player.avatarUrl!,
+                          width: 54,
+                          height: 54,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => Text(player.initials),
+                        )
+                      : Text(
+                          player.initials,
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                ),
               ),
-              const SizedBox(width: 14),
-              // Tên & Ngày tham gia & Sân nhà
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -344,328 +317,118 @@ class _AthleteHeaderCard extends StatelessWidget {
                     Text(
                       player.displayName,
                       style: const TextStyle(
-                        fontSize: 20,
+                        fontSize: 22,
                         fontWeight: FontWeight.w800,
-                        letterSpacing: -0.3,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.calendar_today_outlined,
-                          size: 12,
-                          color: AppColors.muted,
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            'Tham gia ${player.memberSinceFormatted}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.muted,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 3),
+                    Text(
+                      player.homeCourtName ?? 'Hồ sơ vận động viên',
+                      style: AppTokens.label,
                     ),
-                    if (player.homeCourtName != null) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.location_on,
-                            size: 13,
-                            color: AppColors.primary,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              player.homeCourtName!,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.text,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
                   ],
                 ),
               ),
+              if (player.isIdentityVerified)
+                const Icon(Icons.verified, color: AppColors.primary, size: 18),
               if (onEdit != null)
                 IconButton(
                   onPressed: onEdit,
-                  icon: const Icon(
-                    Icons.edit_outlined,
-                    size: 20,
-                    color: AppColors.muted,
-                  ),
                   tooltip: 'Chỉnh sửa hồ sơ',
+                  icon: const Icon(Icons.edit_outlined, size: 20),
                 ),
             ],
           ),
-          const SizedBox(height: 16),
-
-          // Khung tích hợp ELO & Trạng thái phân hạng / Tiến trình
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Hàng 1: Điểm số ELO & Huy hiệu cấp bậc hoặc Đang phân hạng
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'CHỈ SỐ ELO',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.0,
-                              color: AppColors.muted,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.baseline,
-                            textBaseline: TextBaseline.alphabetic,
-                            children: [
-                              Text(
-                                player.eloRating?.toString() ?? '—',
-                                style: AppTokens.metric.copyWith(
-                                  fontSize: 34,
-                                  color: isCalibrated
-                                      ? AppColors.primary
-                                      : AppColors.streak,
-                                  height: 1.0,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Flexible(
-                                child: Text(
-                                  isCalibrated
-                                      ? 'Điểm kỹ năng'
-                                      : 'Điểm tạm tính',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: AppColors.muted,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Huy hiệu cấp bậc hoặc trạng thái phân hạng
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            (isCalibrated
-                                    ? AppColors.primary
-                                    : AppColors.streak)
-                                .withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color:
-                              (isCalibrated
-                                      ? AppColors.primary
-                                      : AppColors.streak)
-                                  .withValues(alpha: 0.35),
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isCalibrated
-                                ? Icons.workspace_premium
-                                : Icons.hourglass_top_rounded,
-                            size: 18,
-                            color: isCalibrated
-                                ? AppColors.primary
-                                : AppColors.streak,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            isCalibrated ? player.tierName : 'Đang phân hạng',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: isCalibrated
-                                  ? AppColors.primary
-                                  : AppColors.streak,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Hàng 2: Logic điều kiện
-                // Nếu ĐANG PHÂN HẠNG: Hiện tiến độ 5 trận phân hạng, KHÔNG hiện thanh progress mục tiêu
-                // Nếu ĐÃ QUA PHÂN HẠNG: Hiện mục tiêu thăng hạng & thanh progress
-                if (!isCalibrated) ...[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Tiến độ phân hạng',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.streak.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          '$completed/5 trận',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.streak,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  // 5 vạch tiến độ phân hạng
-                  Row(
-                    children: List.generate(5, (index) {
-                      final isDone = index < completed;
-                      return Expanded(
-                        child: Container(
-                          height: 6,
-                          margin: EdgeInsets.only(right: index < 4 ? 6 : 0),
-                          decoration: BoxDecoration(
-                            color: isDone
-                                ? AppColors.streak
-                                : AppColors.surface,
-                            borderRadius: BorderRadius.circular(3),
-                            border: Border.all(
-                              color: isDone
-                                  ? AppColors.streak
-                                  : AppColors.border,
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    completed == 0
-                        ? 'Đấu 5 trận đầu để hệ thống xác định thứ hạng và điểm Elo chuẩn xác hơn.'
-                        : 'Còn ${5 - completed} trận nữa để hoàn tất phân hạng và mở khóa mục tiêu thăng hạng.',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.muted,
-                      height: 1.3,
-                    ),
-                  ),
-                ] else ...[
-                  // Thanh tiến trình lên hạng tiếp theo khi đã hoàn tất phân hạng
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Mục tiêu: ${nextInfo.nextTier}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        nextInfo.pointsNeeded > 0
-                            ? 'Còn +${nextInfo.pointsNeeded} Elo'
-                            : 'Hạng cao nhất',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: nextInfo.pointsNeeded > 0
-                              ? AppColors.primary
-                              : AppColors.streak,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: nextInfo.progress,
-                      backgroundColor: AppColors.surface,
+          const SizedBox(height: 26),
+          Center(
+            child: SizedBox(
+              width: 164,
+              height: 164,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Positioned.fill(
+                    child: CircularProgressIndicator(
+                      value: progress,
+                      strokeWidth: 8,
+                      strokeCap: StrokeCap.round,
+                      backgroundColor: AppColors.border,
                       color: AppColors.primary,
-                      minHeight: 6,
                     ),
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        player.eloRating?.toString() ?? '—',
+                        style: AppTokens.metric.copyWith(
+                          fontSize: 40,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      Text(
+                        calibrated ? player.tierName : 'Đang phân hạng',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
-              ],
+              ),
             ),
           ),
-          const SizedBox(height: 14),
-
-          // Nút xem Hộ chiếu QR
-          FilledButton.icon(
+          const SizedBox(height: 20),
+          if (!calibrated) ...[
+            Text(
+              '${player.placementMatchesCompleted}/5 trận',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Điểm tạm tính · Hoàn tất phân hạng để xác định trình độ.',
+              textAlign: TextAlign.center,
+              style: AppTokens.label,
+            ),
+          ] else ...[
+            Text(
+              next.pointsNeeded > 0
+                  ? 'Còn ${next.pointsNeeded} Elo đến ${next.nextTier}'
+                  : next.nextTier,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              next.pointsNeeded > 0
+                  ? 'Tiến độ trong bậc hiện tại · Mốc ${next.targetElo} Elo'
+                  : 'Bạn đã đạt bậc cao nhất hiện tại',
+              textAlign: TextAlign.center,
+              style: AppTokens.label,
+            ),
+          ],
+          const SizedBox(height: 22),
+          OutlinedButton.icon(
             onPressed: onViewPassport,
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.surface,
-              foregroundColor: AppColors.text,
-              side: const BorderSide(color: AppColors.border),
-            ),
-            icon: const Icon(
-              Icons.qr_code_2,
-              color: AppColors.primary,
-              size: 20,
-            ),
+            icon: const Icon(Icons.qr_code_2),
             label: const Text('MÃ QR HỘ CHIẾU THỂ THAO'),
           ),
+          if (player.createdAt != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Tham gia ${player.memberSinceFormatted}',
+              textAlign: TextAlign.center,
+              style: AppTokens.label,
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-// ---------------------------------------------------------------------------
-// 2. CHỈ SỐ PHONG ĐỘ & UY TÍN (Chuỗi thắng & Điểm uy tín gộp trong 1 Bento Card)
-// ---------------------------------------------------------------------------
 class _PerformanceMetricsCard extends StatelessWidget {
   const _PerformanceMetricsCard({required this.player});
   final PlayerProfile player;

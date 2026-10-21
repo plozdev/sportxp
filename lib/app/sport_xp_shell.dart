@@ -467,6 +467,9 @@ class _SportXpShellState extends State<SportXpShell> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
+      flexibleSpace: const DecoratedBox(
+        decoration: BoxDecoration(gradient: AppColors.headerGradient),
+      ),
       title: Row(
         children: [
           const Text(

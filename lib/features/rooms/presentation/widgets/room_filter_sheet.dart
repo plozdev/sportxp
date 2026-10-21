@@ -670,7 +670,7 @@ class _RoomFilterSheetState extends State<RoomFilterSheet> {
                       style: FilledButton.styleFrom(
                         minimumSize: const Size(double.infinity, 48),
                         backgroundColor: AppColors.primary,
-                        foregroundColor: AppColors.background,
+                        foregroundColor: AppColors.onPrimary,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
