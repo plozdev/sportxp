@@ -16,6 +16,8 @@ import '../features/rankings/presentation/leaderboard_page.dart';
 import '../features/rankings/data/mock_leaderboard_repository.dart';
 import '../features/rankings/data/supabase_leaderboard_repository.dart';
 import '../features/tournaments/presentation/tournaments_page.dart';
+import '../features/notifications/data/notice_repository.dart';
+import '../features/notifications/presentation/notification_modal_sheet.dart';
 import '../core/theme/app_theme.dart';
 import '../shared/widgets/bento_card.dart';
 import '../features/rooms/data/managed_room_repository.dart';
@@ -290,20 +292,23 @@ class _SportXpShellState extends State<SportXpShell> {
       actions: [
         IconButton(
           onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Không có thông báo mới.'),
-                duration: Duration(seconds: 1),
-              ),
-            );
+            if (widget.client != null) {
+              NotificationModalSheet.show(
+                context,
+                SupabaseNoticeRepository(widget.client!),
+                onNoticesUpdated: () => setState(() {}),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Không có thông báo mới.'),
+                  duration: Duration(seconds: 1),
+                ),
+              );
+            }
           },
           icon: const Icon(Icons.notifications_none_rounded, size: 22),
           tooltip: 'Thông báo',
-        ),
-        IconButton(
-          onPressed: _refresh,
-          icon: const Icon(Icons.refresh_rounded, size: 20),
-          tooltip: 'Làm mới',
         ),
       ],
     ),
