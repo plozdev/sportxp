@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -519,7 +519,14 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           ChoiceChip(
-            label: const Text('Sắp tới', style: TextStyle(fontSize: 11)),
+            label: Text(
+              'Sắp tới',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: _mineSubTab == 'mine' ? FontWeight.bold : FontWeight.w500,
+                color: _mineSubTab == 'mine' ? AppColors.surface : AppColors.text,
+              ),
+            ),
             selected: _mineSubTab == 'mine',
             selectedColor: AppColors.primary,
             backgroundColor: AppColors.surface,
@@ -538,7 +545,14 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
           ),
           const SizedBox(width: 8),
           ChoiceChip(
-            label: const Text('Lịch sử', style: TextStyle(fontSize: 11)),
+            label: Text(
+              'Lịch sử',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: _mineSubTab == 'history' ? FontWeight.bold : FontWeight.w500,
+                color: _mineSubTab == 'history' ? AppColors.surface : AppColors.text,
+              ),
+            ),
             selected: _mineSubTab == 'history',
             selectedColor: AppColors.primary,
             backgroundColor: AppColors.surface,
