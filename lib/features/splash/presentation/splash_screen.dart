@@ -6,7 +6,7 @@ class SplashScreen extends StatefulWidget {
   const SplashScreen({
     super.key,
     required this.onComplete,
-    this.duration = const Duration(milliseconds: 1800),
+    this.duration = const Duration(milliseconds: 2000),
   });
 
   final VoidCallback onComplete;
@@ -33,27 +33,25 @@ class _SplashScreenState extends State<SplashScreen>
       duration: widget.duration,
     );
 
-    // Hiệu ứng nhấp nháy neon điện tử thể thao (Cyber Athletic Neon Flicker)
+    // Hiệu ứng phát quang năng lượng Emerald thể thao
     _glowAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween<double>(begin: 0.05, end: 1.0), weight: 14),
-      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 0.25), weight: 8),
-      TweenSequenceItem(tween: Tween<double>(begin: 0.25, end: 1.0), weight: 14),
-      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 0.55), weight: 8),
-      TweenSequenceItem(tween: Tween<double>(begin: 0.55, end: 1.0), weight: 16),
-      TweenSequenceItem(tween: ConstantTween<double>(1.0), weight: 40),
+      TweenSequenceItem(tween: Tween<double>(begin: 0.1, end: 1.0), weight: 20),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 0.4), weight: 12),
+      TweenSequenceItem(tween: Tween<double>(begin: 0.4, end: 1.0), weight: 20),
+      TweenSequenceItem(tween: ConstantTween<double>(1.0), weight: 48),
     ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.0, 0.35, curve: Curves.easeOut),
+        curve: const Interval(0.0, 0.4, curve: Curves.easeOut),
       ),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.85, end: 1.0).animate(
+    _scaleAnimation = Tween<double>(begin: 0.82, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeOutBack),
+        curve: const Interval(0.0, 0.5, curve: Curves.easeOutCubic),
       ),
     );
 
@@ -102,27 +100,27 @@ class _SplashScreenState extends State<SplashScreen>
 
             return Stack(
               children: [
-                // Vòng hào quang năng lượng phía sau logo (Ambient glow)
+                // Vòng hào quang xanh sân cầu Emerald (Ambient glow)
                 Center(
                   child: Container(
-                    width: 280,
-                    height: 280,
+                    width: 300,
+                    height: 300,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
                           color: AppColors.primary.withValues(
-                            alpha: 0.18 * glow,
+                            alpha: 0.16 * glow,
                           ),
-                          blurRadius: 100 * glow,
-                          spreadRadius: 30 * glow,
+                          blurRadius: 90 * glow,
+                          spreadRadius: 25 * glow,
                         ),
                       ],
                     ),
                   ),
                 ),
 
-                // Nội dung chính giữa màn hình
+                // Nội dung Logo & Slogan chính thức
                 Center(
                   child: Opacity(
                     opacity: fade,
@@ -131,70 +129,63 @@ class _SplashScreenState extends State<SplashScreen>
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Biểu tượng năng lượng thể thao
+                          // Biểu tượng Logo SportXP chính thức (Shuttlecock + XP Gold)
                           Container(
-                            padding: const EdgeInsets.all(16),
+                            width: 104,
+                            height: 104,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: AppColors.surface,
-                              border: Border.all(
-                                color: AppColors.primary.withValues(
-                                  alpha: 0.3 + 0.7 * glow,
-                                ),
-                                width: 2,
-                              ),
                               boxShadow: [
                                 BoxShadow(
                                   color: AppColors.primary.withValues(
-                                    alpha: 0.35 * glow,
+                                    alpha: 0.15 + 0.2 * glow,
                                   ),
-                                  blurRadius: 20 * glow,
+                                  blurRadius: 24 * glow,
+                                  offset: const Offset(0, 8),
                                 ),
                               ],
+                              border: Border.all(
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.25 + 0.35 * glow,
+                                ),
+                                width: 2,
+                              ),
                             ),
-                            child: Icon(
-                              Icons.bolt_rounded,
-                              size: 40,
-                              color: Color.lerp(
-                                AppColors.muted,
-                                AppColors.primary,
-                                glow,
+                            child: ClipOval(
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Image.asset(
+                                  'assets/brand/symbol.png',
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, _, _) => const Icon(
+                                    Icons.sports_tennis,
+                                    size: 48,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 22),
 
-                          // Chữ SPORTXP với hiệu ứng nhấp nháy phát sáng Neon
-                          Text(
+                          // Chữ SPORTXP thương hiệu
+                          const Text(
                             'SPORTXP',
                             style: TextStyle(
-                              fontSize: 40,
+                              fontSize: 34,
                               fontWeight: FontWeight.w900,
-                              letterSpacing: 6.0,
+                              letterSpacing: 5.0,
                               color: AppColors.text,
-                              shadows: [
-                                Shadow(
-                                  color: AppColors.primary.withValues(
-                                    alpha: 0.8 * glow,
-                                  ),
-                                  blurRadius: 24 * glow,
-                                ),
-                                Shadow(
-                                  color: AppColors.primary.withValues(
-                                    alpha: 0.4 * glow,
-                                  ),
-                                  blurRadius: 48 * glow,
-                                ),
-                              ],
                             ),
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 8),
 
-                          // Tagline thể thao
+                          // Slogan quy chuẩn
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
+                              horizontal: 14,
+                              vertical: 4.5,
                             ),
                             decoration: BoxDecoration(
                               color: AppColors.surface,
@@ -206,18 +197,18 @@ class _SplashScreenState extends State<SplashScreen>
                             child: const Text(
                               'MỖI SET CẦU • MỘT BƯỚC TIẾN',
                               style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.5,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.4,
                                 color: AppColors.primary,
                               ),
                             ),
                           ),
-                          const SizedBox(height: 36),
+                          const SizedBox(height: 40),
 
-                          // Thanh nạp năng lượng tiến trình (Kinetic Loading Bar)
+                          // Thanh Kinetic Progress Bar
                           SizedBox(
-                            width: 140,
+                            width: 130,
                             height: 3,
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(2),
