@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -90,64 +90,7 @@ class _TournamentsPageState extends State<TournamentsPage> {
   Widget build(BuildContext context) {
     return PageContent(
       children: [
-        // 1. HERO BANNER: Tập trung vào Vận động viên & Điểm Elo chuẩn
-        BentoCard(
-          highlighted: true,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.emoji_events_rounded,
-                      size: 26,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'ĐẤU TRƯỜNG TRANH CÚP',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.9,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Giải Đấu Phong Trào',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.text,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Thi đấu tranh cúp và huy chương. Kết quả có trọng tài xác nhận và được cộng điểm Elo chính thức với trọng số cao nhất.',
-                style: TextStyle(fontSize: 13, color: AppColors.muted, height: 1.4),
-              ),
-            ],
-          ),
-        ),
-
-        // 2. BỘ LỌC TRẠNG THÁI (Filter Pills)
+        // 1. BỘ LỌC TRẠNG THÁI (Filter Pills)
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
