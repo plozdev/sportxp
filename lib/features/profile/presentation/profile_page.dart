@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/async_panel.dart';
@@ -190,30 +190,7 @@ class ProfilePage extends StatelessWidget {
                         }
                       },
                     ),
-                    SwitchListTile(
-                      title: const Text('Hồ sơ chỉ dành cho bạn bè'),
-                      subtitle: const Text(
-                        'Người lạ chỉ thấy thông tin kết nối tối thiểu.',
-                      ),
-                      value: player.socialVisibility == 'friends',
-                      onChanged: (value) async {
-                        try {
-                          await SocialRepository(repository!.client)
-                              .visibility(value ? 'friends' : 'public');
-                          onRefresh();
-                        } catch (_) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Chưa thể cập nhật quyền riêng tư.',
-                                ),
-                              ),
-                            );
-                          }
-                        }
-                      },
-                    ),
+
                   ],
                 ),
               ),
@@ -649,7 +626,7 @@ class _MatchDiarySectionState extends State<_MatchDiarySection> {
   List<ActivityView> _published = [];
   bool _loading = false;
   String? _error;
-  int _filter = 0; // 0: Tất cả, 1: Chờ chia sẻ, 2: Đã đăng
+
   int _generation = 0;
 
   @override
@@ -832,24 +809,9 @@ class _MatchDiarySectionState extends State<_MatchDiarySection> {
     return ((_totalWins / total) * 100).round();
   }
 
-  List<_SessionItem> get _filteredSessions {
-    switch (_filter) {
-      case 1:
-        return _allSessions.where((s) => s.hasDraft).toList();
-      case 2:
-        return _allSessions.where((s) => s.hasPublished).toList();
-      default:
-        return _allSessions;
-    }
-  }
-
-  int get _draftSessionCount => _allSessions.where((s) => s.hasDraft).length;
-  int get _publishedSessionCount =>
-      _allSessions.where((s) => s.hasPublished).length;
-
   @override
   Widget build(BuildContext context) {
-    final filtered = _filteredSessions;
+    final filtered = _allSessions;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -979,25 +941,6 @@ class _MatchDiarySectionState extends State<_MatchDiarySection> {
 
         const SizedBox(height: 12),
 
-        // SUB-FILTERS: [ Tất cả ] | [ Chờ chia sẻ ] | [ Đã đăng ]
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              _buildFilterChip(0, 'Tất cả (${_allSessions.length})'),
-              const SizedBox(width: 8),
-              _buildFilterChip(
-                1,
-                'Chờ chia sẻ ($_draftSessionCount)',
-                badge: _draftSessionCount > 0 ? _draftSessionCount : null,
-              ),
-              const SizedBox(width: 8),
-              _buildFilterChip(2, 'Đã đăng ($_publishedSessionCount)'),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 12),
 
         if (_loading && _allSessions.isEmpty)
           const Padding(
@@ -1025,13 +968,9 @@ class _MatchDiarySectionState extends State<_MatchDiarySection> {
                     color: AppColors.muted,
                   ),
                   const SizedBox(height: 10),
-                  Text(
-                    _filter == 1
-                        ? 'Không có hoạt động nào chờ chia sẻ'
-                        : _filter == 2
-                        ? 'Chưa có hoạt động nào được đăng lên bảng tin'
-                        : 'Chưa có hoạt động nào trong nhật ký',
-                    style: const TextStyle(
+                  const Text(
+                    'Chưa có hoạt động nào trong nhật ký',
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: AppColors.text,
@@ -1040,7 +979,7 @@ class _MatchDiarySectionState extends State<_MatchDiarySection> {
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    'Các buổi chơi đã hoàn thành sẽ lưu lại tại đây. Bạn có thể thêm caption và chủ động chia sẻ bất cứ lúc nào.',
+                    'Các trận đấu và buổi giao lưu bạn đã tham gia sẽ được tự động lưu lại tại đây.',
                     style: TextStyle(fontSize: 12, color: AppColors.muted),
                     textAlign: TextAlign.center,
                   ),
@@ -1059,32 +998,7 @@ class _MatchDiarySectionState extends State<_MatchDiarySection> {
                     // Badge trạng thái
                     Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color:
-                                (item.hasDraft
-                                        ? AppColors.streak
-                                        : AppColors.primary)
-                                    .withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            item.hasDraft
-                                ? '⚡ CHỜ CHIA SẺ'
-                                : '✓ ĐÃ ĐĂNG BẢNG TIN',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: item.hasDraft
-                                  ? AppColors.streak
-                                  : AppColors.primary,
-                            ),
-                          ),
-                        ),
+
                         if (item.isHostSession) ...[
                           const SizedBox(width: 6),
                           Container(
@@ -1303,54 +1217,4 @@ class _MatchDiarySectionState extends State<_MatchDiarySection> {
     );
   }
 
-  Widget _buildFilterChip(int index, String label, {int? badge}) {
-    final active = _filter == index;
-    return GestureDetector(
-      onTap: () => setState(() => _filter = index),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: active
-              ? AppColors.primary.withValues(alpha: 0.15)
-              : AppColors.surface,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: active ? AppColors.primary : AppColors.border,
-            width: active ? 1.2 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: active ? FontWeight.w800 : FontWeight.w600,
-                color: active ? AppColors.primary : AppColors.muted,
-              ),
-            ),
-            if (badge != null && badge > 0) ...[
-              const SizedBox(width: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                decoration: BoxDecoration(
-                  color: AppColors.streak,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '$badge',
-                  style: const TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.black,
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
 }

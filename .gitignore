@@ -55,3 +55,4 @@ docs/
 .vscode/
 .agents/
 supabase/
+public/
