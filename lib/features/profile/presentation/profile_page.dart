@@ -13,7 +13,6 @@ import '../../social/presentation/scan_profile_page.dart';
 import '../../auth/presentation/auth_page.dart';
 import '../../feed/domain/activity.dart';
 import '../../feed/presentation/activity_detail_page.dart';
-import '../../feed/presentation/activity_editor_page.dart';
 import '../../feed/presentation/widgets/activity_share_sheet.dart';
 import '../../feed/presentation/widgets/badminton_court_canvas.dart';
 import '../../rooms/domain/room_repository.dart';
@@ -670,56 +669,6 @@ class _MatchDiarySectionState extends State<_MatchDiarySection> {
     }
   }
 
-  Future<void> _openEditor(ActivityView post) async {
-    final updated = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ActivityEditorPage(
-          repository: widget.activityRepository,
-          post: post,
-        ),
-      ),
-    );
-    if (mounted) {
-      _load();
-      if (updated == true) widget.onProfileRefresh();
-    }
-  }
-
-  Future<void> _delete(ActivityView post) async {
-    final yes = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: const Text('Xóa bài đăng?'),
-        content: const Text(
-          'Chỉ xóa bài viết chia sẻ; kết quả và điểm danh buổi chơi trong nhật ký vẫn được bảo toàn nguyên vẹn.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Quay lại'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.loss),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Xóa bài'),
-          ),
-        ],
-      ),
-    );
-    if (yes == true) {
-      await widget.activityRepository.execute(
-        ActivityCommand(
-          'delete',
-          activityId: post.id,
-          expectedVersion: post.version,
-        ),
-      );
-      _load();
-      widget.onProfileRefresh();
-    }
-  }
 
   String _formatTime(DateTime dateTime) {
     final now = DateTime.now();
@@ -1021,32 +970,6 @@ class _MatchDiarySectionState extends State<_MatchDiarySection> {
                           ),
                         ],
                         const Spacer(),
-                        if (!item.hasDraft && item.primary.isOwner)
-                          PopupMenuButton<String>(
-                            icon: const Icon(
-                              Icons.more_horiz,
-                              size: 18,
-                              color: AppColors.muted,
-                            ),
-                            tooltip: 'Tùy chọn',
-                            onSelected: (val) {
-                              if (val == 'edit') _openEditor(item.primary);
-                              if (val == 'delete') _delete(item.primary);
-                            },
-                            itemBuilder: (_) => [
-                              const PopupMenuItem(
-                                value: 'edit',
-                                child: Text('Sửa caption'),
-                              ),
-                              const PopupMenuItem(
-                                value: 'delete',
-                                child: Text(
-                                  'Xóa bài',
-                                  style: TextStyle(color: AppColors.loss),
-                                ),
-                              ),
-                            ],
-                          ),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -1117,32 +1040,13 @@ class _MatchDiarySectionState extends State<_MatchDiarySection> {
                             ),
                             icon: const Icon(Icons.share_outlined, size: 14),
                             label: const Text(
-                              'Chia sẻ ảnh',
+                              'Lưu ảnh thành tích',
                               style: TextStyle(fontSize: 12),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        if (item.hasDraft)
-                          Expanded(
-                            child: FilledButton.icon(
-                              onPressed: () => _openEditor(item.primary),
-                              style: FilledButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 8,
-                                ),
-                              ),
-                              icon: const Icon(Icons.send_rounded, size: 14),
-                              label: const Text(
-                                'Đăng bài',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          )
-                        else if (widget.roomRepository != null)
+                        if (widget.roomRepository != null) ...[
+                          const SizedBox(width: 8),
                           Expanded(
                             child: FilledButton.tonalIcon(
                               onPressed: () async {
@@ -1164,15 +1068,16 @@ class _MatchDiarySectionState extends State<_MatchDiarySection> {
                                 ),
                               ),
                               icon: const Icon(
-                                Icons.article_outlined,
+                                Icons.info_outline_rounded,
                                 size: 14,
                               ),
                               label: const Text(
-                                'Chi tiết',
+                                'Xem tỉ số',
                                 style: TextStyle(fontSize: 12),
                               ),
                             ),
                           ),
+                        ],
                       ],
                     ),
                   ],
