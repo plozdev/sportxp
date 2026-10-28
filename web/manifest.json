@@ -1,6 +1,6 @@
-{
-    "name": "sport_xp_4",
-    "short_name": "sport_xp_4",
+﻿{
+    "name": "SportXP",
+    "short_name": "SportXP",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
