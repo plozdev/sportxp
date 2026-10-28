@@ -1,10 +1,9 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../features/feed/presentation/record_match_sheet.dart';
-import '../features/feed/data/mock_activity_repository.dart';
 import '../features/matchmaking/domain/live_match_repository.dart';
 import '../features/matchmaking/domain/match_room.dart';
 import '../features/matchmaking/presentation/create_match_sheet.dart';
@@ -13,7 +12,6 @@ import '../features/profile/data/profile_repository.dart';
 import '../features/profile/domain/player_profile.dart';
 import '../features/profile/presentation/profile_page.dart';
 import '../features/rankings/presentation/leaderboard_page.dart';
-import '../features/rankings/data/mock_leaderboard_repository.dart';
 import '../features/rankings/data/supabase_leaderboard_repository.dart';
 import '../features/tournaments/presentation/tournaments_page.dart';
 import '../features/notifications/data/notice_repository.dart';
@@ -21,7 +19,6 @@ import '../features/notifications/presentation/notification_modal_sheet.dart';
 import '../core/theme/app_theme.dart';
 import '../shared/widgets/bento_card.dart';
 import '../features/rooms/data/managed_room_repository.dart';
-import '../features/rooms/data/mock_room_repository.dart';
 import '../features/rooms/domain/room_repository.dart';
 import '../features/rooms/presentation/managed_rooms_page.dart';
 import '../features/rooms/presentation/room_editor_page.dart';
@@ -44,38 +41,13 @@ class _SportXpShellState extends State<SportXpShell> {
   bool _signingOut = false;
   int _index = 0;
   int _roomRefresh = 0;
-  static const _roomsV2 = bool.fromEnvironment('ROOMS_V2_ENABLED');
-  static const _mockRooms = bool.fromEnvironment(
-    'ROOMS_MOCK_ENABLED',
-    defaultValue: false,
-  );
-  MockRoomRepository? _sandbox;
-  MockActivityRepository? _activities;
-  MockLeaderboardRepository? _mockLeaderboard;
-  bool get _managed => _mockRooms || _roomsV2;
-  RoomRepository get _roomRepository =>
-      _mockRooms ? _sandbox! : ManagedRoomRepository(widget.client!);
-
-  void _bindSandbox() {
-    final id = _userId;
-    if (id == null) {
-      _sandbox = null;
-      _activities = null;
-      _mockLeaderboard = null;
-      return;
-    }
-    if (_sandbox?.userId != id) {
-      _sandbox = MockRoomRepository(userId: id);
-      _activities = MockActivityRepository(_sandbox!);
-      _mockLeaderboard = MockLeaderboardRepository(_sandbox!);
-    }
-  }
+  bool get _managed => widget.client != null;
+  RoomRepository get _roomRepository => ManagedRoomRepository(widget.client!);
 
   @override
   void initState() {
     super.initState();
     _userId = widget.client?.auth.currentUser?.id;
-    _bindSandbox();
     _reload();
     _auth = widget.client?.auth.onAuthStateChange.listen(
       (state) {
@@ -83,7 +55,6 @@ class _SportXpShellState extends State<SportXpShell> {
         if (!mounted || id == _userId) return;
         setState(() {
           _userId = id;
-          _bindSandbox();
           _reload();
         });
       },
@@ -101,22 +72,8 @@ class _SportXpShellState extends State<SportXpShell> {
     final client = widget.client;
     if (client != null) {
       final profiles = ProfileRepository(client);
-      if (!_mockRooms) _leaders = _observe(profiles.leaderboard());
+      _leaders = _observe(profiles.leaderboard());
       _profile = _observe(profiles.currentProfile());
-      final sandbox = _sandbox;
-      unawaited(
-        _profile.then<void>((p) {
-          if (p != null && identical(sandbox, _sandbox)) {
-            final changed =
-                sandbox != null &&
-                (sandbox.people[sandbox.userId] != p.displayName ||
-                    (p.eloRating != null &&
-                        sandbox.ratings[sandbox.userId] != p.eloRating));
-            sandbox?.updateProfile(p.displayName, p.eloRating);
-            if (_mockRooms && mounted && changed) _refreshSandbox();
-          }
-        }, onError: (Object _, StackTrace _) {}),
-      );
     }
     final matches = widget.matches;
     if (matches != null) {
@@ -132,7 +89,6 @@ class _SportXpShellState extends State<SportXpShell> {
   }
 
   void _refresh() => setState(_reload);
-  void _refreshSandbox() => setState(() => _roomRefresh++);
 
   void _message(String message) {
     ScaffoldMessenger.of(context)
@@ -187,13 +143,6 @@ class _SportXpShellState extends State<SportXpShell> {
 
   Future<void> _record() async {
     if (!await _ensureAuth() || !mounted) return;
-    if (_mockRooms) {
-      setState(() => _index = 1);
-      _message(
-        'Mô phỏng: mở Buổi của tôi → buổi đang chơi → Trận đấu / Điểm danh.',
-      );
-      return;
-    }
     final matches = widget.matches;
     if (matches == null) {
       _message(_schemaMessage);
@@ -316,7 +265,7 @@ class _SportXpShellState extends State<SportXpShell> {
       child: IndexedStack(
         index: _index,
         children: [
-          _managed && widget.client != null && (!_mockRooms || _sandbox != null)
+          widget.client != null
               ? ManagedRoomsPage(
                   repository: _roomRepository,
                   refreshToken: _roomRefresh,
@@ -330,15 +279,7 @@ class _SportXpShellState extends State<SportXpShell> {
                   onJoin: _join,
                   onRefresh: _refresh,
                 ),
-          _mockRooms && _sandbox != null
-              ? LeaderboardPage(
-                  repository: _mockLeaderboard,
-                  refreshToken: _roomRefresh,
-                  onRefresh: _refreshSandbox,
-                  isMock: true,
-                  selectedPlayerId: _sandbox!.actorId,
-                )
-              : _leaders == null
+          _leaders == null
               ? _pending()
               : LeaderboardPage(
                   repository: widget.client != null
@@ -348,9 +289,8 @@ class _SportXpShellState extends State<SportXpShell> {
                   onRefresh: _refresh,
                   selectedPlayerId: _userId,
                 ),
-          const TournamentsPage(),
+          TournamentsPage(client: widget.client),
           ProfilePage(
-            accountSwitcher: null,
             profile: _profile,
             isSignedIn: _userId != null,
             onSignOut: _signOut,
@@ -358,8 +298,6 @@ class _SportXpShellState extends State<SportXpShell> {
             repository: widget.client != null
                 ? ProfileRepository(widget.client!)
                 : null,
-            activityRepository: _activities,
-            roomRepository: _sandbox,
             refreshToken: _roomRefresh,
           ),
         ],

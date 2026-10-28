@@ -1,9 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../data/managed_room_repository.dart';
-import '../data/mock_room_repository.dart';
 import '../domain/managed_room.dart';
 import '../domain/room_repository.dart';
 import 'room_detail_page.dart';
@@ -68,9 +67,7 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
       final rows = await widget.repository.list(
         scope,
         offset: _items.length,
-        search: widget.repository is MockRoomRepository && scope == 'discover'
-            ? _filter.toSearch()
-            : null,
+        search: null,
       );
       if (mounted && generation == _generation) {
         setState(() {
@@ -576,7 +573,7 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
 
   // 3. THANH LỌC GỌN: Ngày chơi · Trình độ · Bộ lọc
   Widget _buildQuickFilterBar() {
-    if (widget.repository is! MockRoomRepository || _mainTab != 'discover') {
+    if (_mainTab != 'discover') {
       return const SizedBox.shrink();
     }
 

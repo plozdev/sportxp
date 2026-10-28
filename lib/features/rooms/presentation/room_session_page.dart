@@ -5,7 +5,6 @@ import '../domain/managed_room.dart';
 import '../domain/room_repository.dart';
 import '../../../shared/widgets/async_panel.dart';
 import '../../../shared/widgets/bento_card.dart';
-import 'mock_room_controls.dart';
 
 class RoomSessionPage extends StatefulWidget {
   const RoomSessionPage({
@@ -243,14 +242,6 @@ class _RoomSessionPageState extends State<RoomSessionPage> {
             .join(' + ');
         return PageContent(
           children: [
-            MockRoomControls(
-              repository: widget.repository,
-              onChanged: () {
-                _pending = null;
-                _error = null;
-                setState(_load);
-              },
-            ),
             Text(
               '${room.title} · ${room.statusLabel}',
               style: Theme.of(context).textTheme.titleLarge,

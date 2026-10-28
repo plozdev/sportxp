@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../data/mock_room_repository.dart';
 import '../../domain/room_search.dart';
 import '../../../rankings/domain/rank_tier.dart';
 
@@ -246,10 +245,18 @@ class _RoomFilterSheetState extends State<RoomFilterSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final areas = {
+    final areas = const [
       'Tất cả',
-      ...MockRoomRepository.venues.map((v) => v.area),
-    }.toList();
+      'Phú Nhuận',
+      'Bình Thạnh',
+      'Thủ Đức',
+      'Quận 1',
+      'Quận 3',
+      'Quận 7',
+      'Quận 10',
+      'Tân Bình',
+      'Gò Vấp',
+    ];
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);

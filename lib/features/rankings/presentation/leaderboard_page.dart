@@ -47,12 +47,8 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
   final GlobalKey _myRankKey = GlobalKey();
   int _request = 0;
 
-  String _selectedCourtId = 'court-a';
-  List<Court> _courts = const [
-    Court(id: 'court-a', name: 'Sân Đào Duy Anh', distanceKm: 1.8),
-    Court(id: 'court-b', name: 'Sân Bình Thạnh', distanceKm: 4.2),
-    Court(id: 'court-c', name: 'Sân Thủ Đức', distanceKm: 8.5),
-  ];
+  String _selectedCourtId = '';
+  List<Court> _courts = const [];
   List<PlayerProfile> _allPlayers = const [];
   List<PlayerProfile> _displayPlayers = const [];
   PlayerCourtRank? _userCourtRank;
@@ -99,6 +95,9 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
         final courts = await widget.repository!.getCourts();
         if (mounted && request == _request && courts.isNotEmpty) {
           _courts = courts;
+          if (_selectedCourtId.isEmpty || !_courts.any((c) => c.id == _selectedCourtId)) {
+            _selectedCourtId = courts.first.id;
+          }
         }
       }
 
@@ -218,7 +217,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
 
   String get _currentCourtName {
     final found = _courts.where((c) => c.id == _selectedCourtId).firstOrNull;
-    return found?.name ?? 'Sân Đào Duy Anh';
+    return found?.name ?? (_courts.isNotEmpty ? _courts.first.name : 'Sân thi đấu');
   }
 
   PlayerProfile? get _currentUserProfile {
@@ -361,7 +360,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             ),
             subtitle: Text(
-              '${_allPlayers.length} tay vợt${widget.isMock ? ' · Dữ liệu mẫu' : ''}',
+              '${_allPlayers.length} tay vợt',
             ),
             trailing: const Icon(Icons.expand_more),
             onTap: () => CourtPickerSheet.show(
