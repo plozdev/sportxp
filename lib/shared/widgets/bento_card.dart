@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+
 import '../../core/theme/app_theme.dart';
 
 class BentoCard extends StatelessWidget {
-  const BentoCard({super.key, required this.child});
+  const BentoCard({super.key, required this.child, this.highlighted = false});
   final Widget child;
+  final bool highlighted;
 
   @override
   Widget build(BuildContext context) => Material(
@@ -13,11 +15,20 @@ class BentoCard extends StatelessWidget {
       side: const BorderSide(color: AppColors.border),
     ),
     clipBehavior: Clip.antiAlias,
-    child: SizedBox(
-      width: double.infinity,
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: child,
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: highlighted
+            ? const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                stops: [0, 0.65],
+                colors: [AppColors.mint, AppColors.surface],
+              )
+            : null,
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        child: Padding(padding: const EdgeInsets.all(20), child: child),
       ),
     ),
   );

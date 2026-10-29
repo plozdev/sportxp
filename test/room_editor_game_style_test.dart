@@ -105,7 +105,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify top lobby bar
-      expect(find.text('KÈO ĐẤU'), findsOneWidget);
+      expect(find.text('Kèo đấu'), findsOneWidget);
       expect(find.text('Nhập mã'), findsOneWidget);
 
       // Verify 3 tabs

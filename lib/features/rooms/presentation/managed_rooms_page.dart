@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../data/managed_room_repository.dart';
-import '../data/mock_room_repository.dart';
 import '../domain/managed_room.dart';
 import '../domain/room_repository.dart';
 import 'room_detail_page.dart';
@@ -68,9 +67,7 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
       final rows = await widget.repository.list(
         scope,
         offset: _items.length,
-        search: widget.repository is MockRoomRepository && scope == 'discover'
-            ? _filter.toSearch()
-            : null,
+        search: null,
       );
       if (mounted && generation == _generation) {
         setState(() {
@@ -154,11 +151,7 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
               const SizedBox(height: 16),
               Row(
                 children: const [
-                  Icon(
-                    Icons.tag_rounded,
-                    color: AppColors.primary,
-                    size: 20,
-                  ),
+                  Icon(Icons.tag_rounded, color: AppColors.primary, size: 20),
                   SizedBox(width: 8),
                   Text(
                     'VÀO PHÒNG BẰNG MÃ',
@@ -258,7 +251,7 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
                       },
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.background,
+                  foregroundColor: AppColors.onPrimary,
                   minimumSize: const Size(double.infinity, 48),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -337,7 +330,11 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
                   ),
                 ),
                 trailing: _filter.skill == level['value']
-                    ? const Icon(Icons.check_rounded, color: AppColors.primary, size: 20)
+                    ? const Icon(
+                        Icons.check_rounded,
+                        color: AppColors.primary,
+                        size: 20,
+                      )
                     : null,
                 onTap: () {
                   Navigator.pop(ctx);
@@ -368,131 +365,83 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
 
   // 1. CẤU TRÚC HEADER MỚI: KÈO ĐẤU — KHU VỰC ĐANG CHỌN + NÚT NHẬP MÃ DUY NHẤT
   Widget _buildTopBar() {
-    final currentArea =
-        _filter.area == 'Tất cả' ? 'TP. Hồ Chí Minh' : _filter.area;
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+    final currentArea = _filter.area == 'Tất cả'
+        ? 'TP. Hồ Chí Minh'
+        : _filter.area;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Row(
         children: [
-          // Tiêu đề Kèo đấu & khu vực đang chọn (Bấm để đổi khu vực)
-          InkWell(
-            onTap: () => RoomFilterSheet.show(
-              context: context,
-              initial: _filter,
-              onApply: (updated) {
-                setState(() {
-                  _filter.area = updated.area;
-                  _filter.radius = updated.radius;
-                  _filter.date = updated.date;
-                  _filter.skill = updated.skill;
-                  _filter.maxFee = updated.maxFee;
-                  _filter.availableOnly = updated.availableOnly;
-                });
-                _load(reset: true);
-              },
-            ),
-            borderRadius: BorderRadius.circular(10),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.sports_tennis_rounded,
-                    color: AppColors.primary,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        'KÈO ĐẤU',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.text,
-                          letterSpacing: 0.5,
-                        ),
+          Expanded(
+            child: InkWell(
+              onTap: () => RoomFilterSheet.show(
+                context: context,
+                initial: _filter,
+                onApply: (updated) {
+                  setState(() {
+                    _filter.area = updated.area;
+                    _filter.radius = updated.radius;
+                    _filter.date = updated.date;
+                    _filter.skill = updated.skill;
+                    _filter.maxFee = updated.maxFee;
+                    _filter.availableOnly = updated.availableOnly;
+                  });
+                  _load(reset: true);
+                },
+              ),
+
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Kèo đấu',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
                       ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.location_on,
-                            size: 11,
-                            color: AppColors.primary,
-                          ),
-                          const SizedBox(width: 2),
-                          Text(
-                            currentArea,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.muted,
-                            ),
-                          ),
-                          const Icon(
-                            Icons.arrow_drop_down,
-                            size: 14,
-                            color: AppColors.muted,
-                          ),
-                        ],
+                    ),
+                    Text(
+                      '$currentArea ▾',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.muted,
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-          const Spacer(),
-          // Điểm nhập mã duy nhất ở đầu trang
+          const SizedBox(width: 8),
           OutlinedButton.icon(
             onPressed: _showJoinByCodeSheet,
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.border),
-              backgroundColor: AppColors.surface,
-              foregroundColor: AppColors.text,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              minimumSize: Size.zero,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            icon: const Icon(
-              Icons.tag_rounded,
-              size: 14,
-              color: AppColors.primary,
-            ),
-            label: const Text(
-              'Nhập mã',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-            ),
+            icon: const Icon(Icons.tag_rounded, size: 18),
+            label: const Text('Nhập mã'),
           ),
-          const SizedBox(width: 6),
-          IconButton.filledTonal(
+          IconButton(
             onPressed: _loading ? null : () => _load(reset: true),
-            icon: const Icon(Icons.refresh_rounded, size: 18),
-            style: IconButton.styleFrom(
-              backgroundColor: AppColors.surface,
-              foregroundColor: AppColors.muted,
-              side: const BorderSide(color: AppColors.border),
-            ),
             tooltip: 'Tải lại',
+            icon: const Icon(Icons.refresh_rounded, size: 22),
           ),
         ],
       ),
     );
   }
 
-  // 2. HAI TAB ĐIỀU HƯỚNG GỌN GÀNG: "Tìm kèo" | "Buổi của tôi"
   Widget _buildScopeTabs() {
     final tabs = [
       {'key': 'discover', 'label': 'Tìm kèo', 'icon': Icons.search_rounded},
-      {'key': 'mine', 'label': 'Buổi của tôi', 'icon': Icons.event_available_rounded},
+      {
+        'key': 'mine',
+        'label': 'Buổi của tôi',
+        'icon': Icons.event_available_rounded,
+      },
     ];
 
     return Container(
@@ -515,7 +464,7 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
                   padding: const EdgeInsets.symmetric(vertical: 9),
                   decoration: BoxDecoration(
                     color: _mainTab == t['key']
-                        ? AppColors.primary.withValues(alpha: 0.15)
+                        ? AppColors.mint
                         : AppColors.surface,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
@@ -567,7 +516,14 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           ChoiceChip(
-            label: const Text('Sắp tới', style: TextStyle(fontSize: 11)),
+            label: Text(
+              'Sắp tới',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: _mineSubTab == 'mine' ? FontWeight.bold : FontWeight.w500,
+                color: _mineSubTab == 'mine' ? AppColors.surface : AppColors.text,
+              ),
+            ),
             selected: _mineSubTab == 'mine',
             selectedColor: AppColors.primary,
             backgroundColor: AppColors.surface,
@@ -586,7 +542,14 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
           ),
           const SizedBox(width: 8),
           ChoiceChip(
-            label: const Text('Lịch sử', style: TextStyle(fontSize: 11)),
+            label: Text(
+              'Lịch sử',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: _mineSubTab == 'history' ? FontWeight.bold : FontWeight.w500,
+                color: _mineSubTab == 'history' ? AppColors.surface : AppColors.text,
+              ),
+            ),
             selected: _mineSubTab == 'history',
             selectedColor: AppColors.primary,
             backgroundColor: AppColors.surface,
@@ -610,7 +573,7 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
 
   // 3. THANH LỌC GỌN: Ngày chơi · Trình độ · Bộ lọc
   Widget _buildQuickFilterBar() {
-    if (widget.repository is! MockRoomRepository || _mainTab != 'discover') {
+    if (_mainTab != 'discover') {
       return const SizedBox.shrink();
     }
 
@@ -641,13 +604,19 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
                   : '${_filter.date!.day}/${_filter.date!.month}',
               style: TextStyle(
                 fontSize: 11,
-                fontWeight: _filter.date != null ? FontWeight.w700 : FontWeight.w500,
-                color: _filter.date != null ? AppColors.primary : AppColors.text,
+                fontWeight: _filter.date != null
+                    ? FontWeight.w700
+                    : FontWeight.w500,
+                color: _filter.date != null
+                    ? AppColors.primary
+                    : AppColors.text,
               ),
             ),
             backgroundColor: AppColors.surface,
             side: BorderSide(
-              color: _filter.date != null ? AppColors.primary : AppColors.border,
+              color: _filter.date != null
+                  ? AppColors.primary
+                  : AppColors.border,
             ),
             onPressed: () async {
               final now = DateTime.now();
@@ -670,21 +639,27 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
             avatar: Icon(
               Icons.military_tech_outlined,
               size: 14,
-              color: _filter.skill != null ? AppColors.primary : AppColors.muted,
+              color: _filter.skill != null
+                  ? AppColors.primary
+                  : AppColors.muted,
             ),
             label: Text(
-              _filter.skill == null
-                  ? 'Trình độ'
-                  : '${_filter.skill} Elo',
+              _filter.skill == null ? 'Trình độ' : '${_filter.skill} Elo',
               style: TextStyle(
                 fontSize: 11,
-                fontWeight: _filter.skill != null ? FontWeight.w700 : FontWeight.w500,
-                color: _filter.skill != null ? AppColors.primary : AppColors.text,
+                fontWeight: _filter.skill != null
+                    ? FontWeight.w700
+                    : FontWeight.w500,
+                color: _filter.skill != null
+                    ? AppColors.primary
+                    : AppColors.text,
               ),
             ),
             backgroundColor: AppColors.surface,
             side: BorderSide(
-              color: _filter.skill != null ? AppColors.primary : AppColors.border,
+              color: _filter.skill != null
+                  ? AppColors.primary
+                  : AppColors.border,
             ),
             onPressed: _showQuickSkillDialog,
           ),
@@ -731,7 +706,7 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
           FilterChip(
             label: const Text('Còn chỗ', style: TextStyle(fontSize: 11)),
             selected: _filter.availableOnly,
-            selectedColor: AppColors.primary.withValues(alpha: 0.15),
+            selectedColor: AppColors.mint,
             checkmarkColor: AppColors.primary,
             backgroundColor: AppColors.surface,
             side: BorderSide(
@@ -796,7 +771,9 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
                       unreadCount > 0
                           ? Icons.notifications_active
                           : Icons.notifications_outlined,
-                      color: unreadCount > 0 ? AppColors.streak : AppColors.muted,
+                      color: unreadCount > 0
+                          ? AppColors.streak
+                          : AppColors.muted,
                       size: 18,
                     ),
                     const SizedBox(width: 10),
@@ -910,7 +887,8 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
     };
 
     final subMessage = switch (_scope) {
-      'mine' => 'Tìm kèo ở mục "Tìm kèo" hoặc dùng "Nhập mã" ở trên để vào phòng.',
+      'mine' =>
+        'Tìm kèo ở mục "Tìm kèo" hoặc dùng "Nhập mã" ở trên để vào phòng.',
       'history' => 'Các buổi chơi sau khi kết thúc sẽ hiển thị tại đây.',
       _ => 'Thử mở rộng phạm vi tìm kiếm hoặc bỏ bớt tiêu chí lọc.',
     };
@@ -975,7 +953,7 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.15),
+            color: AppColors.mint,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
           ),
@@ -1004,11 +982,7 @@ class _ManagedRoomsPageState extends State<ManagedRoomsPage> {
           ),
         ),
         for (final room in rooms) ...[
-          RoomCard(
-            room: room,
-            isHighlight: true,
-            onTap: () => _open(room.id),
-          ),
+          RoomCard(room: room, isHighlight: true, onTap: () => _open(room.id)),
           const SizedBox(height: 12),
         ],
       ],

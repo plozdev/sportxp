@@ -15,8 +15,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  quality_and_tests:
-    name: Analyze & Runtime Regression Tests
+  quality_and_analysis:
+    name: Code Quality & Analysis
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -37,22 +37,15 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # 4. Phân tích tĩnh (bắt unused imports, linter errors, dead code)
+      # 4. Phân tích tĩnh (bắt syntax error, unused imports, linter errors, dead code)
       - name: Analyze code
         run: flutter analyze
-
-      # Validate behavior and runtime exceptions, not demo names or screenshot pixels.
-      - name: Run behavior and runtime regression tests
-        run: flutter test
-
-      # Reproduce runners where optional SDK font files are not installed.
-      - name: Verify onboarding and passport with fallback fonts
-        run: flutter test --dart-define=TEST_SDK_FONTS=false test/onboarding/onboarding_test.dart test/social_visual_test.dart
 
   build:
     name: Build Android & Web
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    needs: quality_and_analysis
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

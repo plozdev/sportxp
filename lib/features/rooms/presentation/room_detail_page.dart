@@ -9,13 +9,8 @@ import '../data/managed_room_repository.dart';
 import '../domain/managed_room.dart';
 import '../domain/room_repository.dart';
 import 'room_session_page.dart';
-import '../data/mock_room_repository.dart';
-import 'mock_room_controls.dart';
 import 'room_editor_page.dart';
 import 'widgets/room_ui_formatters.dart';
-import '../../feed/data/mock_activity_repository.dart';
-import '../../feed/domain/activity.dart';
-import '../../feed/presentation/activity_editor_page.dart';
 
 class RoomDetailPage extends StatefulWidget {
   const RoomDetailPage({
@@ -65,71 +60,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       await widget.repository.execute(_pending!);
       _pending = null;
       if (mounted) setState(_load);
-      if (action == 'finish' && mounted) {
-        _showPostSessionSummaryDialog();
-      }
     } catch (e) {
       if (mounted) setState(() => _error = roomFailure(e));
     } finally {
       if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _showPostSessionSummaryDialog() async {
-    final proceed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: const Row(
-          children: [
-            Icon(Icons.emoji_events_outlined, color: AppColors.primary),
-            SizedBox(width: 8),
-            Text('Tổng kết buổi chơi'),
-          ],
-        ),
-        content: const Text(
-          'Buổi chơi đã kết thúc thành công.\n\nBạn có muốn mở màn hình tổng kết để thêm caption và chọn chia sẻ hoạt động lên Bảng tin cùng bạn bè không?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Bỏ qua'),
-          ),
-          FilledButton.icon(
-            onPressed: () => Navigator.pop(context, true),
-            icon: const Icon(Icons.send_rounded, size: 16),
-            label: const Text('Thêm caption & Chia sẻ'),
-          ),
-        ],
-      ),
-    );
-
-    if (proceed == true && mounted && widget.repository is MockRoomRepository) {
-      final mock = widget.repository as MockRoomRepository;
-      final activities = MockActivityRepository(mock);
-      final drafts = await activities.drafts();
-      final matches = drafts.where((d) => d.roomId == widget.roomId).toList();
-      final draft =
-          matches.where((d) => d.kind == ActivityKind.personal).firstOrNull ??
-          matches.firstOrNull;
-      if (draft != null && mounted) {
-        await Navigator.push<bool>(
-          context,
-          MaterialPageRoute(
-            builder: (_) =>
-                ActivityEditorPage(repository: activities, post: draft),
-          ),
-        );
-      }
-    } else if (proceed == false && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Bạn có thể mở lại buổi chơi từ Hồ sơ → Nhật ký thi đấu bất cứ lúc nào.',
-          ),
-          duration: Duration(seconds: 3),
-        ),
-      );
     }
   }
 
@@ -990,7 +924,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                   }),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.background,
+                foregroundColor: AppColors.onPrimary,
                 minimumSize: const Size(0, 48),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -1030,12 +964,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     // Trường hợp 5: Host bắt đầu buổi chơi
     else if (room.isHost &&
         ['OPEN', 'FULL'].contains(room.status) &&
-        (!room.startsAt.isAfter(DateTime.now()) ||
-            widget.repository is MockRoomRepository)) {
+        !room.startsAt.isAfter(DateTime.now())) {
       content = action(
-        widget.repository is MockRoomRepository
-            ? 'Bắt đầu buổi chơi (mock cho phép sớm)'
-            : 'Bắt đầu buổi chơi',
+        'Bắt đầu buổi chơi',
         'start',
         isPrimary: true,
       );
@@ -1136,16 +1067,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
         return PageContent(
           children: [
-            // Controls giả lập cho mock
-            MockRoomControls(
-              repository: widget.repository,
-              onChanged: () {
-                _pending = null;
-                _error = null;
-                setState(_load);
-              },
-            ),
-
             // Khoảng nhìn đầu: Khối tổng quan tinh gọn (Sân, Giờ, Phí, Chỗ & Host)
             _buildCompactHeroCard(room),
 
@@ -1173,27 +1094,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
               ),
 
             if (_busy) const LinearProgressIndicator(),
-
-            // Nút mở màn hình tổng kết & chia sẻ lên Bảng tin sau khi buổi đấu kết thúc
-            if (widget.repository is MockRoomRepository &&
-                room.status == 'COMPLETED')
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: FilledButton.tonalIcon(
-                  onPressed: _showPostSessionSummaryDialog,
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 44),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  icon: const Icon(Icons.share_rounded, size: 16),
-                  label: const Text(
-                    'Màn hình tổng kết & Chia sẻ lên Bảng tin',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ),
 
             // Thao tác bổ trợ của Host (Xác nhận đặt sân, Sửa lịch, Hủy buổi)
             if (widget.repository is RoomSessionRepository && room.canEdit)

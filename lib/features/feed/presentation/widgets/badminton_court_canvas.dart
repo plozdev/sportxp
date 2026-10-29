@@ -61,9 +61,9 @@ class _BadmintonTacticalCourtGraphic extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF0C1914), // Court deep pine green
-            Color(0xFF070C10),
-            Color(0xFF09141B),
+            AppColors.mint, // Court deep pine green
+            AppColors.mint,
+            AppColors.mint,
           ],
         ),
       ),
@@ -73,9 +73,7 @@ class _BadmintonTacticalCourtGraphic extends StatelessWidget {
           children: [
             // Sân cầu lông vector vẽ bằng CustomPainter
             Positioned.fill(
-              child: CustomPaint(
-                painter: _BadmintonCourtPainter(),
-              ),
+              child: CustomPaint(painter: _BadmintonCourtPainter()),
             ),
 
             // Điểm sáng trung tâm nhẹ nhàng
@@ -95,9 +93,12 @@ class _BadmintonTacticalCourtGraphic extends StatelessWidget {
               top: 10,
               left: 12,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3.5,
+                ),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.72),
+                  color: AppColors.surface.withValues(alpha: 0.95),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
                     color: AppColors.primary.withValues(alpha: 0.28),
@@ -131,24 +132,27 @@ class _BadmintonTacticalCourtGraphic extends StatelessWidget {
               top: 10,
               right: 12,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3.5,
+                ),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.72),
+                  color: AppColors.surface.withValues(alpha: 0.95),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
                     color: hasPending
                         ? AppColors.streak.withValues(alpha: 0.4)
                         : (wins >= losses && wins > 0
-                            ? AppColors.primary.withValues(alpha: 0.4)
-                            : AppColors.border),
+                              ? AppColors.primary.withValues(alpha: 0.4)
+                              : AppColors.border),
                   ),
                 ),
                 child: Text(
                   hasPending
                       ? 'CHỜ XÁC NHẬN'
                       : (isPersonal
-                          ? '${wins}W - ${losses}L'
-                          : '${stats.confirmed} TRẬN CHỐT'),
+                            ? '${wins}W - ${losses}L'
+                            : '${stats.confirmed} TRẬN CHỐT'),
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
@@ -156,8 +160,8 @@ class _BadmintonTacticalCourtGraphic extends StatelessWidget {
                     color: hasPending
                         ? AppColors.streak
                         : (wins >= losses && wins > 0
-                            ? AppColors.primary
-                            : AppColors.text),
+                              ? AppColors.primary
+                              : AppColors.text),
                   ),
                 ),
               ),
@@ -180,7 +184,7 @@ class _BadmintonTacticalCourtGraphic extends StatelessWidget {
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.75),
+                            color: AppColors.surface.withValues(alpha: 0.95),
                             borderRadius: BorderRadius.circular(5),
                             border: Border.all(
                               color: AppColors.border.withValues(alpha: 0.8),
@@ -223,10 +227,7 @@ class _BadmintonTacticalCourtGraphic extends StatelessWidget {
 
 /// 2. BẢN ĐỒ GPS CHẠY BỘ NGOÀI TRỜI CHUẨN STRAVA
 class _RunningRouteGraphic extends StatelessWidget {
-  const _RunningRouteGraphic({
-    required this.post,
-    required this.height,
-  });
+  const _RunningRouteGraphic({required this.post, required this.height});
 
   final ActivityView post;
   final double height;
@@ -243,16 +244,17 @@ class _RunningRouteGraphic extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: const Color(0xFFFC5200).withValues(alpha: 0.3), // Strava orange
+          color: const Color(0xFFB45309)
+              .withValues(alpha: 0.3), // Strava orange
           width: 1,
         ),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF140D09), // Strava subtle burnt amber dark
-            Color(0xFF090A0C),
-            Color(0xFF0A0F14),
+            AppColors.background, // Strava subtle burnt amber dark
+            AppColors.background,
+            AppColors.background,
           ],
         ),
       ),
@@ -261,23 +263,22 @@ class _RunningRouteGraphic extends StatelessWidget {
         child: Stack(
           children: [
             // Lưới bản đồ topo chìm + đường route GPS CustomPainter
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _GpsRoutePainter(),
-              ),
-            ),
+            Positioned.fill(child: CustomPaint(painter: _GpsRoutePainter())),
 
             // Tag chạy bộ & GPS ở góc trên bên trái
             Positioned(
               top: 10,
               left: 12,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3.5,
+                ),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.72),
+                  color: AppColors.surface.withValues(alpha: 0.95),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: const Color(0xFFFC5200).withValues(alpha: 0.4),
+                    color: const Color(0xFFB45309).withValues(alpha: 0.4),
                   ),
                 ),
                 child: const Row(
@@ -286,7 +287,7 @@ class _RunningRouteGraphic extends StatelessWidget {
                     Icon(
                       Icons.directions_run_rounded,
                       size: 13,
-                      color: Color(0xFFFC5200),
+                      color: Color(0xFFB45309),
                     ),
                     SizedBox(width: 4),
                     Text(
@@ -295,7 +296,7 @@ class _RunningRouteGraphic extends StatelessWidget {
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.8,
-                        color: Color(0xFFFC5200),
+                        color: Color(0xFFB45309),
                       ),
                     ),
                   ],
@@ -308,9 +309,12 @@ class _RunningRouteGraphic extends StatelessWidget {
               top: 10,
               right: 12,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3.5,
+                ),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.72),
+                  color: AppColors.surface.withValues(alpha: 0.95),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: AppColors.border),
                 ),
@@ -320,7 +324,7 @@ class _RunningRouteGraphic extends StatelessWidget {
                     Icon(Icons.gps_fixed, size: 10, color: AppColors.primary),
                     SizedBox(width: 4),
                     Text(
-                      'GPS TRACKED',
+                      'TUYẾN MÔ PHỎNG',
                       style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w800,
@@ -340,7 +344,7 @@ class _RunningRouteGraphic extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.75),
+                  color: AppColors.surface.withValues(alpha: 0.95),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: AppColors.border),
                 ),
@@ -364,10 +368,7 @@ class _RunningRouteGraphic extends StatelessWidget {
 
 /// 3. BIỂU ĐỒ CƯỜNG ĐỘ TẬP THỂ LỰC & FOOTWORK
 class _WorkoutIntensityGraphic extends StatelessWidget {
-  const _WorkoutIntensityGraphic({
-    required this.post,
-    required this.height,
-  });
+  const _WorkoutIntensityGraphic({required this.post, required this.height});
 
   final ActivityView post;
   final double height;
@@ -379,16 +380,16 @@ class _WorkoutIntensityGraphic extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: const Color(0xFF00B4D8).withValues(alpha: 0.3),
+          color: const Color(0xFF0D766E).withValues(alpha: 0.3),
           width: 1,
         ),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF08141F),
-            Color(0xFF070B10),
-            Color(0xFF101924),
+            AppColors.background,
+            AppColors.background,
+            AppColors.background,
           ],
         ),
       ),
@@ -397,23 +398,22 @@ class _WorkoutIntensityGraphic extends StatelessWidget {
         child: Stack(
           children: [
             // Wave đồ thị nhịp tim CustomPainter
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _WorkoutWavePainter(),
-              ),
-            ),
+            Positioned.fill(child: CustomPaint(painter: _WorkoutWavePainter())),
 
             // Tag thể lực & footwork
             Positioned(
               top: 10,
               left: 12,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3.5,
+                ),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.72),
+                  color: AppColors.surface.withValues(alpha: 0.95),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: const Color(0xFF00B4D8).withValues(alpha: 0.4),
+                    color: const Color(0xFF0D766E).withValues(alpha: 0.4),
                   ),
                 ),
                 child: const Row(
@@ -422,7 +422,7 @@ class _WorkoutIntensityGraphic extends StatelessWidget {
                     Icon(
                       Icons.fitness_center_rounded,
                       size: 12,
-                      color: Color(0xFF00B4D8),
+                      color: Color(0xFF0D766E),
                     ),
                     SizedBox(width: 4),
                     Text(
@@ -431,7 +431,7 @@ class _WorkoutIntensityGraphic extends StatelessWidget {
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.8,
-                        color: Color(0xFF00B4D8),
+                        color: Color(0xFF0D766E),
                       ),
                     ),
                   ],
@@ -444,9 +444,12 @@ class _WorkoutIntensityGraphic extends StatelessWidget {
               top: 10,
               right: 12,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3.5,
+                ),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.72),
+                  color: AppColors.surface.withValues(alpha: 0.95),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: AppColors.border),
                 ),
@@ -491,7 +494,7 @@ class _BadmintonCourtPainter extends CustomPainter {
       ..strokeWidth = 1.0;
 
     final netPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.35)
+      ..color = AppColors.primary.withValues(alpha: 0.25)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
 
@@ -560,7 +563,7 @@ class _GpsRoutePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     // Vẽ lưới tọa độ mờ
     final gridPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.04)
+      ..color = AppColors.muted.withValues(alpha: 0.12)
       ..strokeWidth = 0.8;
 
     for (double x = 20; x < size.width; x += 30) {
@@ -571,7 +574,7 @@ class _GpsRoutePainter extends CustomPainter {
     }
 
     // Đường chạy GPS màu cam Strava với hiệu ứng glow
-    const orangeColor = Color(0xFFFC5200);
+    const orangeColor = Color(0xFFB45309);
 
     final glowPaint = Paint()
       ..color = orangeColor.withValues(alpha: 0.25)
@@ -623,20 +626,12 @@ class _GpsRoutePainter extends CustomPainter {
     // Điểm xuất phát (Green dot)
     final startPaint = Paint()..color = AppColors.primary;
     canvas.drawCircle(start, 5, startPaint);
-    canvas.drawCircle(
-      start,
-      2,
-      Paint()..color = Colors.white,
-    );
+    canvas.drawCircle(start, 2, Paint()..color = Colors.white);
 
     // Điểm kết thúc (Checkered / Orange dot)
     final endPaint = Paint()..color = orangeColor;
     canvas.drawCircle(end, 5, endPaint);
-    canvas.drawCircle(
-      end,
-      2,
-      Paint()..color = Colors.white,
-    );
+    canvas.drawCircle(end, 2, Paint()..color = Colors.white);
   }
 
   @override
@@ -648,7 +643,7 @@ class _WorkoutWavePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final wavePaint = Paint()
-      ..color = const Color(0xFF00B4D8).withValues(alpha: 0.8)
+      ..color = const Color(0xFF0D766E).withValues(alpha: 0.8)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
 
@@ -657,8 +652,8 @@ class _WorkoutWavePainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          const Color(0xFF00B4D8).withValues(alpha: 0.2),
-          const Color(0xFF00B4D8).withValues(alpha: 0.0),
+          const Color(0xFF0D766E).withValues(alpha: 0.2),
+          const Color(0xFF0D766E).withValues(alpha: 0.0),
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
@@ -670,14 +665,22 @@ class _WorkoutWavePainter extends CustomPainter {
     fillPath.lineTo(0, size.height * 0.65);
 
     final points = [
-      0.10, 0.58,
-      0.22, 0.42,
-      0.35, 0.48,
-      0.48, 0.32,
-      0.62, 0.52,
-      0.75, 0.38,
-      0.88, 0.60,
-      1.00, 0.50,
+      0.10,
+      0.58,
+      0.22,
+      0.42,
+      0.35,
+      0.48,
+      0.48,
+      0.32,
+      0.62,
+      0.52,
+      0.75,
+      0.38,
+      0.88,
+      0.60,
+      1.00,
+      0.50,
     ];
 
     for (int i = 0; i < points.length; i += 2) {

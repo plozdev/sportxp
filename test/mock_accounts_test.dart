@@ -67,7 +67,7 @@ void main() {
       expect(tester.takeException(), isNull);
       await tester.tap(find.text('Xếp hạng'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('BẢNG XẾP HẠNG GIẢ LẬP'), findsOneWidget);
+      expect(find.textContaining('Dữ liệu mẫu'), findsOneWidget);
       final page = tester.widget<LeaderboardPage>(find.byType(LeaderboardPage));
       expect(page.selectedPlayerId, 'linh');
       expect(page.repository, isA<MockLeaderboardRepository>());

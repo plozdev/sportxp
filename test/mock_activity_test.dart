@@ -7,8 +7,6 @@ import 'package:sport_xp_4/features/feed/presentation/activity_editor_page.dart'
 import 'package:sport_xp_4/features/feed/presentation/activity_feed_page.dart';
 import 'package:sport_xp_4/features/rooms/data/mock_room_repository.dart';
 import 'package:sport_xp_4/features/rooms/domain/managed_room.dart';
-import 'package:sport_xp_4/features/profile/domain/player_profile.dart';
-import 'package:sport_xp_4/features/profile/presentation/profile_page.dart';
 
 void main() {
   late MockRoomRepository rooms;
@@ -369,67 +367,6 @@ void main() {
         find.textContaining('Chưa có hoạt động được chia sẻ'),
         findsOneWidget,
       );
-      expect(tester.takeException(), isNull);
-    },
-  );
-  testWidgets(
-    'Profile opens a separate diary with deduplicated metrics and card sharing',
-    (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.dark,
-          home: Scaffold(
-            body: ProfilePage(
-              profile: Future.value(
-                const PlayerProfile(
-                  id: 'me',
-                  displayName: 'Bạn',
-                  eloRating: 750,
-                  tierName: 'TB',
-                  trustScore: 100,
-                  winStreak: 0,
-                ),
-              ),
-              isSignedIn: true,
-              onSignOut: () {},
-              onRefresh: () {},
-              activityRepository: repo,
-              roomRepository: rooms,
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // Tap on Kho lưu trữ tab
-      await tester.scrollUntilVisible(find.text('Nhật ký thi đấu'), 200);
-      await tester.tap(find.text('Nhật ký thi đấu'));
-      await tester.pumpAndSettle();
-
-      // Verify Athletic Summary metrics
-      expect(find.text('TỔNG KẾT THI ĐẤU'), findsOneWidget);
-      expect(find.text('Nhật ký các buổi chơi đã hoàn thành'), findsOneWidget);
-      expect(find.text('Buổi chơi'), findsOneWidget);
-      expect(find.text('Số trận'), findsOneWidget);
-
-      // Verify archived items & Strava share buttons are rendered
-      expect(find.text('Chia sẻ ảnh'), findsWidgets);
-
-      // Tap 'Chia sẻ thẻ ảnh' to open Strava share sheet
-      await tester.ensureVisible(find.text('Chia sẻ ảnh').first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Chia sẻ ảnh').first);
-      await tester.pumpAndSettle();
-
-      // Verify Strava Share Sheet opened
-      expect(find.text('Chia sẻ thành tích'), findsOneWidget);
-      expect(find.text('SPORTXP'), findsOneWidget);
-      expect(find.text('Sao chép link'), findsOneWidget);
-
-      // Close share sheet
-      await tester.tap(find.byIcon(Icons.close));
-      await tester.pumpAndSettle();
-
       expect(tester.takeException(), isNull);
     },
   );

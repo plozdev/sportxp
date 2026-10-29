@@ -54,7 +54,6 @@ class _ActivityFeedPageState extends State<ActivityFeedPage> {
       _loading = true;
       _error = null;
       if (reset) {
-        _posts.clear();
         _more = true;
       }
     });
@@ -67,6 +66,7 @@ class _ActivityFeedPageState extends State<ActivityFeedPage> {
 
       if (mounted && gen == _generation) {
         setState(() {
+          if (reset) _posts.clear();
           _posts.addAll(rows);
           _more = rows.length == 20;
         });

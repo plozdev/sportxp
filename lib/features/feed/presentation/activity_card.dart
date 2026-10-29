@@ -51,24 +51,12 @@ class ActivityCard extends StatelessWidget {
   }
 
   String _formatDuration(int? minutes) {
-    if (minutes == null || minutes <= 0) return '45m';
+    if (minutes == null || minutes <= 0) return '—';
     final h = minutes ~/ 60;
     final m = minutes % 60;
     if (h > 0 && m > 0) return '${h}h ${m}m';
     if (h > 0) return '${h}h';
     return '${m}m';
-  }
-
-  IconData _sportIcon(String? sportType) {
-    switch (sportType) {
-      case 'running':
-        return Icons.directions_run_rounded;
-      case 'workout':
-        return Icons.fitness_center_rounded;
-      case 'badminton':
-      default:
-        return Icons.sports_tennis_rounded;
-    }
   }
 
   String _sportLabel(String? sportType) {
@@ -112,8 +100,8 @@ class ActivityCard extends StatelessWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      isPersonal ? AppColors.primary : AppColors.streak,
-                      const Color(0xFF1E293B),
+                      isPersonal ? AppColors.accent : AppColors.streak,
+                      AppColors.primary,
                     ],
                   ),
                   border: Border.all(
@@ -180,52 +168,23 @@ class ActivityCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Icon(
-                          _sportIcon(sportType),
-                          size: 13,
+                    Text(
+                      '${_sportLabel(sportType)} · $timeStr',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                    if (post.courtName.isNotEmpty)
+                      Text(
+                        post.courtName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
                           color: AppColors.muted,
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          _sportLabel(sportType),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.muted,
-                          ),
-                        ),
-                        const Text(
-                          ' · ',
-                          style: TextStyle(color: AppColors.muted),
-                        ),
-                        Text(
-                          timeStr,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.muted,
-                          ),
-                        ),
-                        if (post.courtName.isNotEmpty) ...[
-                          const Text(
-                            ' · ',
-                            style: TextStyle(color: AppColors.muted),
-                          ),
-                          Flexible(
-                            child: Text(
-                              post.courtName,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.muted,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                      ),
                   ],
                 ),
               ),
@@ -234,7 +193,10 @@ class ActivityCard extends StatelessWidget {
               if (currentAudience == ActivityAudience.onlyMe)
                 Container(
                   margin: const EdgeInsets.only(right: 6),
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(4),
@@ -243,7 +205,11 @@ class ActivityCard extends StatelessWidget {
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.lock_outline, size: 11, color: AppColors.muted),
+                      Icon(
+                        Icons.lock_outline,
+                        size: 11,
+                        color: AppColors.muted,
+                      ),
                       SizedBox(width: 3),
                       Text(
                         'Chỉ mình tôi',
@@ -300,9 +266,16 @@ class ActivityCard extends StatelessWidget {
                       value: 'delete',
                       child: Row(
                         children: [
-                          Icon(Icons.delete_outline, size: 16, color: AppColors.loss),
+                          Icon(
+                            Icons.delete_outline,
+                            size: 16,
+                            color: AppColors.loss,
+                          ),
                           SizedBox(width: 10),
-                          Text('Xóa bài', style: TextStyle(color: AppColors.loss)),
+                          Text(
+                            'Xóa bài',
+                            style: TextStyle(color: AppColors.loss),
+                          ),
                         ],
                       ),
                     ),
@@ -328,7 +301,7 @@ class ActivityCard extends StatelessWidget {
             Text(
               post.title,
               style: const TextStyle(
-                fontSize: 16,
+                fontSize: 21,
                 fontWeight: FontWeight.w800,
                 color: AppColors.text,
                 letterSpacing: -0.2,
@@ -338,11 +311,11 @@ class ActivityCard extends StatelessWidget {
           if (currentCaption.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
-              '“$currentCaption”',
+              currentCaption,
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: Color(0xFFD1D5DB), // Light grey text
+                color: AppColors.muted,
                 height: 1.45,
               ),
             ),
@@ -350,107 +323,74 @@ class ActivityCard extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          // 3. KHỐI THÔNG SỐ THỂ CHẤT ĐẬM CHẤT STRAVA (ATHLETIC METRICS BOX)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppColors.border.withValues(alpha: 0.8),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final metrics = <Widget>[
                 if (sportType == 'running') ...[
                   _MetricCol(
-                    label: 'QUÃNG ĐƯỜNG',
-                    value: post.distanceKm != null
-                        ? post.distanceKm!.toStringAsFixed(2)
-                        : '5.20',
+                    label: 'Quãng đường',
+                    value: post.distanceKm?.toStringAsFixed(2) ?? '—',
                     unit: 'km',
                     highlight: true,
                   ),
-                  _MetricDivider(),
                   _MetricCol(
-                    label: 'PACE TB',
-                    value: post.pace ?? '5:26',
+                    label: 'Pace trung bình',
+                    value: post.pace ?? '—',
                     unit: '/km',
-                  ),
-                  _MetricDivider(),
-                  _MetricCol(
-                    label: 'THỜI GIAN',
-                    value: '${post.durationMinutes ?? 28}:15',
-                  ),
-                  _MetricDivider(),
-                  _MetricCol(
-                    label: 'TIÊU HAO',
-                    value: '${post.calories ?? 365}',
-                    unit: 'kcal',
                   ),
                 ] else if (sportType == 'workout') ...[
                   _MetricCol(
-                    label: 'THỜI GIAN',
-                    value: '${post.durationMinutes ?? 45}',
-                    unit: 'phút',
+                    label: 'Thời gian',
+                    value: _formatDuration(post.durationMinutes),
                   ),
-                  _MetricDivider(),
                   _MetricCol(
-                    label: 'TIÊU HAO',
-                    value: '${post.calories ?? 410}',
+                    label: 'Tiêu hao',
+                    value: post.calories?.toString() ?? '—',
                     unit: 'kcal',
                     highlight: true,
                   ),
-                  _MetricDivider(),
-                  _MetricCol(
-                    label: 'NHỊP TIM TB',
-                    value: '${post.avgHeartRate ?? 140}',
-                    unit: 'bpm',
-                  ),
-                  _MetricDivider(),
-                  _MetricCol(
-                    label: 'CỰC ĐẠI',
-                    value: '${post.maxHeartRate ?? 165}',
-                    unit: 'bpm',
-                  ),
                 ] else ...[
-                  // Badminton stats
                   _MetricCol(
-                    label: 'THỜI GIAN',
+                    label: isPersonal ? 'Thắng – thua' : 'Trận xác nhận',
+                    value: isPersonal
+                        ? '$wins – $losses'
+                        : '${stats.confirmed}/${stats.total}',
+                    highlight: true,
+                  ),
+                  _MetricCol(
+                    label: 'Thời gian',
                     value: _formatDuration(post.durationMinutes),
                   ),
-                  _MetricDivider(),
-                  _MetricCol(
-                    label: 'TIÊU HAO',
-                    value: '${post.calories ?? 520}',
-                    unit: 'kcal',
-                  ),
-                  _MetricDivider(),
-                  _MetricCol(
-                    label: 'NHỊP TIM TB',
-                    value: '${post.avgHeartRate ?? 146}',
-                    unit: 'bpm',
-                  ),
-                  _MetricDivider(),
-                  _MetricCol(
-                    label: isPersonal ? 'KẾT QUẢ' : 'TỔNG SET',
-                    value: isPersonal
-                        ? '${wins}W - ${losses}L'
-                        : '${stats.confirmed}/${stats.total}',
-                    highlight: isPersonal && wins >= losses && wins > 0,
-                  ),
                 ],
-              ],
-            ),
+              ];
+              return Wrap(
+                spacing: 16,
+                runSpacing: 14,
+                children: [
+                  for (final metric in metrics)
+                    SizedBox(
+                      width: constraints.maxWidth < 270
+                          ? constraints.maxWidth
+                          : (constraints.maxWidth - 16) / 2,
+                      child: metric,
+                    ),
+                ],
+              );
+            },
           ),
-
-          const SizedBox(height: 10),
-
-          // 4. HÌNH THỂ THAO TRỰC QUAN (Sân chiến thuật, GPS Route, hoặc Wave cường độ)
+          if (stats.pending > 0 || post.resultsUpdated) ...[
+            const SizedBox(height: 12),
+            Text(
+              post.resultsUpdated
+                  ? 'Kết quả đã được cập nhật'
+                  : '${stats.pending} trận đang chờ xác nhận',
+              style: const TextStyle(color: AppColors.muted, fontSize: 12),
+            ),
+          ],
+          const SizedBox(height: 18),
           ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: AthleticVisualGraphic(post: post, height: 120),
+            borderRadius: BorderRadius.circular(14),
+            child: AthleticVisualGraphic(post: post, height: 190),
           ),
 
           // 5. THÔNG TIN ĐỒNG BỘ THIẾT BỊ (Apple Watch / Garmin / Strava Sync)
@@ -464,12 +404,14 @@ class ActivityCard extends StatelessWidget {
                   color: AppColors.muted,
                 ),
                 const SizedBox(width: 5),
-                Text(
-                  'Đồng bộ từ ${post.deviceSource}',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.muted,
+                Flexible(
+                  child: Text(
+                    'Thiết bị mẫu · ${post.deviceSource}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.muted,
+                    ),
                   ),
                 ),
               ],
@@ -514,10 +456,7 @@ class ActivityCard extends StatelessWidget {
             const SizedBox(height: 10),
             const Divider(color: AppColors.border, height: 1),
             const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: actions,
-            ),
+            Wrap(alignment: WrapAlignment.spaceBetween, children: actions),
           ],
         ],
       ),
@@ -535,7 +474,9 @@ class ActivityCard extends StatelessWidget {
     if (names.length == 2) {
       return '${names[0]} và ${names[1]} đã thả kudos';
     }
-    final remaining = post.likeCount > names.length ? post.likeCount - 2 : names.length - 2;
+    final remaining = post.likeCount > names.length
+        ? post.likeCount - 2
+        : names.length - 2;
     return '${names[0]}, ${names[1]} và $remaining người khác đã thả kudos';
   }
 }
@@ -562,22 +503,22 @@ class _MetricCol extends StatelessWidget {
         Text(
           label,
           style: const TextStyle(
-            fontSize: 9.5,
+            fontSize: 12,
             fontWeight: FontWeight.w700,
-            letterSpacing: 0.6,
+            letterSpacing: 0,
             color: AppColors.muted,
           ),
         ),
         const SizedBox(height: 3),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Text(
               value,
               style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
+                fontSize: 25,
+                fontWeight: FontWeight.w800,
+                fontFeatures: [FontFeature.tabularFigures()],
                 letterSpacing: -0.2,
                 color: highlight ? AppColors.primary : AppColors.text,
               ),
@@ -596,17 +537,6 @@ class _MetricCol extends StatelessWidget {
           ],
         ),
       ],
-    );
-  }
-}
-
-class _MetricDivider extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 24,
-      color: AppColors.border.withValues(alpha: 0.6),
     );
   }
 }
@@ -640,7 +570,7 @@ class _KudosAvatarStack extends StatelessWidget {
                 height: 18,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: const Color(0xFF1E293B),
+                  color: AppColors.primary,
                   border: Border.all(color: AppColors.surface, width: 1.5),
                 ),
                 child: Center(
@@ -649,7 +579,7 @@ class _KudosAvatarStack extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 8,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.text,
+                      color: AppColors.onPrimary,
                     ),
                   ),
                 ),

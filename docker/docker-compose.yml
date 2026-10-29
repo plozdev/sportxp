@@ -1,0 +1,57 @@
+# ==============================================================================
+# SportXP Local Backend Stack (PostgreSQL + PostgREST + Swagger UI)
+# Tùy chỉnh sử dụng: Local Docker (Offline/Dev) hoặc Cloud Supabase
+# ==============================================================================
+
+services:
+  # 1. Cơ sở dữ liệu PostgreSQL (chứa Schema, RPC & Dữ liệu mới nhất)
+  sportxp-db:
+    image: postgres:15-alpine
+    container_name: sportxp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: sportxp_password_local
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init-db:/docker-entrypoint-initdb.d:ro
+      - sportxp_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. REST API Gateway (PostgREST tương thích hoàn toàn chuẩn REST API của Supabase)
+  sportxp-rest:
+    image: postgrest/postgrest:v12.0.2
+    container_name: sportxp-postgrest
+    restart: unless-stopped
+    depends_on:
+      sportxp-db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      PGRST_DB_URI: postgres://postgres:sportxp_password_local@sportxp-db:5432/postgres
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_OPENAPI_SERVER_PROXY_URI: http://localhost:3000
+      PGRST_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long-sportxp
+
+  # 3. Giao diện trực quan xem & test API (Swagger UI)
+  sportxp-swagger:
+    image: swaggerapi/swagger-ui:v5.11.0
+    container_name: sportxp-swagger
+    restart: unless-stopped
+    depends_on:
+      - sportxp-rest
+    ports:
+      - "8080:8080"
+    environment:
+      API_URL: http://localhost:3000/
+
+volumes:
+  sportxp_db_data:

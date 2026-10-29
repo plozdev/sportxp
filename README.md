@@ -28,13 +28,12 @@ configuration and an Android device/emulator. In **Run > Edit Configurations >
 Additional run args**, use:
 
 ```text
---dart-define-from-file=.env --dart-define=ROOMS_MOCK_ENABLED=true
+--dart-define-from-file=.env
 ```
 
 The local `.idea/runConfigurations/main_dart.xml` is configured with these
-arguments (IDE files are gitignored). Stop and run again after changing defines;
-hot reload does not update them. Rooms mock is enabled by default and requires
-no room migration. `--no-wasm-dry-run` belongs
+arguments. Stop and run again after changing defines;
+hot reload does not update them. The app connects directly to the Supabase backend or local Docker stack defined in `.env`. `--no-wasm-dry-run` belongs
 to web builds and should not be included in an Android run configuration.
 
 Rebuild when changing `.env`. Do not bundle a service-role key. A public anon key
@@ -68,22 +67,18 @@ below describe the retained adapters used when mock is explicitly disabled.
 - Recording success refreshes feed/profile/leaderboard; failed refreshes do not
   re-run the RPC. Loading/error/empty states and retry controls are included.
 
+## Database schema
+
+The current production database schema is maintained in `supabase/schema.sql` (and mirrored for local Docker testing in `docker/init-db/01_schema_and_seed.sql`). It contains the definitions for profiles, courts, match_rooms, room_members, match_results, friendships, onboarding_responses, tournaments, and related tables.
+
 ## Social profile setup
 
-Apply `supabase/migrations/20261018180000_social_phase1.sql` as the database owner
-after the onboarding and skill-tier migrations, first on staging. It adds stable
-profile IDs, friendships, blocks, private audit events, RPCs and restrictive
-profile policies. Review existing consumers: profile SELECT grants become an
-explicit whitelist, and private/blocked profiles are filtered at the server.
+Profiles, friendships, blocks, and restrictive profile policies are reflected in `supabase/schema.sql`. Profile SELECT grants become an explicit whitelist, and private/blocked profiles are filtered at the server.
 
-QR, camera/link input, connection lists and friend actions require this migration.
-The existing profile can still load without it. Set `PROFILE_LINK_ORIGIN` to your
+QR, camera/link input, connection lists and friend actions are supported. Set `PROFILE_LINK_ORIGIN` to your
 HTTPS origin at build time for `https://<host>/#/p/<public_id>` web links; leave it
 empty for the `sportxp://profile/<public_id>` native scheme. Verified HTTPS native
 links still require domain association files and native signing configuration.
-
-The isolated SQL test uses `@electric-sql/pglite` installed outside the repository:
-`node supabase/tests/social_phase1_test.cjs <installation-directory>`.
 
 ## Phase 2–4 sandbox (current MVP)
 
@@ -144,21 +139,15 @@ Elo/Trust updates remain deferred. Tests: `flutter test test/mock_activity_test.
 ## Retained Supabase rooms adapter (Phase 2A)
 
 For the retained backend adapter, explicitly set `--dart-define=ROOMS_MOCK_ENABLED=false`
-and `--dart-define=ROOMS_V2_ENABLED=true`. Apply
-`supabase/migrations/20261019000100_rooms_phase2a.sql` after Phase 1, on staging
-first, and deploy the enabled client together with the schema cutover. The flag
-defaults to false so the existing MVP can run before the new backend is ready.
-After cutover, direct room writes from old clients are rejected; create/join and
-all room transitions must use `room_command_v2`.
+and `--dart-define=ROOMS_V2_ENABLED=true`. The flag
+defaults to false so the existing MVP can run in sandbox mode without requiring live backend cutover.
+When enabled, create/join and all room transitions use `room_command_v2`.
 
 Phase 2A adds public/private rooms, organizer/player host roles, start/end times,
 skill/fee/cancellation terms, transactional slots/calendar, FIFO eligible waiters,
 revision-bound reconfirmation, notices and private audit history. Finishing a
 room does not award Elo or attendance/trust. Legacy rooms remain read-only and
 are not silently imported into the new calendar with an invented end time.
-
-Tests: `node supabase/tests/rooms_phase2a_test.cjs <pglite-install-directory>` and
-`flutter test --dart-define=ROOMS_V2_ENABLED=true test/managed_rooms_test.dart`.
 
 ## Backend verification and remaining deployment prerequisite
 
@@ -207,13 +196,9 @@ The five-question assessment now runs after login/restored sessions until
 profiles.onboarding_step reaches 5. It resumes saved answers, handles retries,
 shows a provisional player card, and initializes Elo to 300..850 on the server.
 The new Vietnam recreational tiers replace the previous provisional thresholds.
-Taxonomy v2 now has 20 levels (Yếu-/Yếu/Yếu+, TBY, TB, TBK, Khá, Tốt and
+Taxonomy v2 has 20 levels (Yếu-/Yếu/Yếu+, TBY, TB, TBK, Khá, Tốt and
 Cao thủ phong trào). These are SportXP calibration boundaries, not a national
 standard. 850 Elo is provisional TB+; 1000 Elo is TBK+, not a professional status.
-After the onboarding migration, apply
-supabase/migrations/20261018_skill_tiers_v2.sql to sync labels without changing Elo.
 Profile progress and onboarding use the same enum. Research and the reviewed
 rating model are in docs/how-elo-works.md.
-Apply supabase/migrations/20261018_onboarding.sql in Supabase SQL Editor before
-using this app version. Migration is provided locally and has not been deployed.
 See docs/onboarding.md for behavior, server requirements and validation details.

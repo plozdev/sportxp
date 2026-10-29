@@ -627,7 +627,7 @@ class _ActivityEditorPageState extends State<ActivityEditorPage> {
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 15),
                   backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.background,
+                  foregroundColor: AppColors.onPrimary,
                   disabledBackgroundColor:
                       AppColors.primary.withValues(alpha: 0.25),
                   shape: RoundedRectangleBorder(

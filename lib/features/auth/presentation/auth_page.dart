@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/theme/app_theme.dart';
+import 'forgot_password_sheet.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key, required this.client, this.startupError});
@@ -103,6 +104,25 @@ class _AuthPageState extends State<AuthPage>
       _error = null;
       _message = null;
     });
+  }
+
+  Future<void> _showForgotPasswordSheet() async {
+    final client = widget.client;
+    if (client == null) return;
+    final success = await ForgotPasswordSheet.show(
+      context,
+      client: client,
+      initialEmail: _email.text.trim(),
+    );
+    if (success == true && mounted) {
+      setState(() {
+        _signUp = false;
+        _message =
+            'Đã đặt lại mật khẩu mới thành công. Hãy nhập mật khẩu để đăng nhập.';
+        _error = null;
+        _password.clear();
+      });
+    }
   }
 
   @override
@@ -475,6 +495,34 @@ class _AuthPageState extends State<AuthPage>
                                 ? 'Vui lòng nhập mật khẩu${_signUp ? ' ít nhất 6 ký tự' : ''}.'
                                 : null,
                           ),
+
+                          if (!_signUp)
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: TextButton(
+                                  onPressed: _busy ? null : _showForgotPasswordSheet,
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: AppColors.primary,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 4,
+                                    ),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: const Text(
+                                    'Quên mật khẩu?',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
 
                           // Thông báo lỗi
                           if (_error != null)

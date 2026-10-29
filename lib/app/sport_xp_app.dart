@@ -82,7 +82,7 @@ class _SportXpAppState extends State<SportXpApp> {
   Widget build(BuildContext context) => MaterialApp(
     title: 'SportXP',
     debugShowCheckedModeBanner: false,
-    theme: AppTheme.dark,
+    theme: AppTheme.light,
     navigatorKey: _navigator,
     navigatorObservers: [_observer],
     builder: (context, child) => AuthGate(

@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -310,8 +310,13 @@ class _RoomEditorPageState extends State<RoomEditorPage> {
         appBar: AppBar(
           title: Text(
             widget.room == null ? 'Tạo buổi chơi' : 'Sửa điều kiện buổi chơi',
-            style: const TextStyle(fontWeight: FontWeight.w700),
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 18,
+              color: AppColors.text,
+            ),
           ),
+          iconTheme: const IconThemeData(color: AppColors.text),
           backgroundColor: AppColors.background,
           surfaceTintColor: Colors.transparent,
           elevation: 0,
@@ -471,7 +476,7 @@ class _RoomEditorPageState extends State<RoomEditorPage> {
                       onPressed: _busy ? null : _save,
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
-                        foregroundColor: AppColors.background,
+                        foregroundColor: AppColors.onPrimary,
                         minimumSize: const Size(double.infinity, 52),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
